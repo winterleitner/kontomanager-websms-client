@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KontomanagerClient", "KontomanagerClient\KontomanagerClient.csproj", "{6E30DC86-0C59-463D-A2E2-8634F9C272D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KontomanagerClientDemo", "KontomanagerClientDemo\KontomanagerClientDemo.csproj", "{BEA653A6-3A6A-46A6-A767-785B727145BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KontomanagerClientTests", "KontomanagerClientTests\KontomanagerClientTests.csproj", "{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E30DC86-0C59-463D-A2E2-8634F9C272D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E30DC86-0C59-463D-A2E2-8634F9C272D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E30DC86-0C59-463D-A2E2-8634F9C272D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E30DC86-0C59-463D-A2E2-8634F9C272D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEA653A6-3A6A-46A6-A767-785B727145BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEA653A6-3A6A-46A6-A767-785B727145BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEA653A6-3A6A-46A6-A767-785B727145BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEA653A6-3A6A-46A6-A767-785B727145BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -42,13 +42,13 @@ namespace KontomanagerClient
 
         private DateTime _lastConnected = DateTime.MinValue;
 
-        private CookieContainer _cookieContainer = new ();
+        private CookieContainer _cookieContainer = new CookieContainer();
 
         private readonly string _user;
         private readonly string _password;
 
         #region Send Queue
-        private BlockingCollection<Message> Messages = new ();
+        private BlockingCollection<Message> Messages = new BlockingCollection<Message>();
         public MessageCounter _counter = new MessageCounter(60 * 60, 50);
         #endregion
 
@@ -176,33 +176,37 @@ namespace KontomanagerClient
             });
             try
             {
-                using HttpClientHandler handler = new HttpClientHandler();
-                handler.CookieContainer = _cookieContainer;
-                using var client = new HttpClient(handler);
-
-                HttpResponseMessage response = await client.PostAsync(SendURI, content);
-                var responseHTML = await response.Content.ReadAsStringAsync();
-                MessageSendResult res;
-                if (responseHTML.Contains("erfolgreich"))
-                    res = MessageSendResult.Ok;
-                else if (responseHTML.Contains("Pro Rufnummer sind maximal"))
-                    res = MessageSendResult.LimitReached;
-                else if (responseHTML.Contains(
-                    "Eine oder mehrere SMS konnte(n) nicht versendet werden, da die angegebene Empfängernummer ungültig war.")
-                )
+                using (HttpClientHandler handler = new HttpClientHandler())
                 {
-                    if (_exceptionOnInvalidNumberFormat)
-                        throw new FormatException(
-                            $"The format of the recipient number {m.RecipientNumber} does not match the expected format 00[country][number_without_leading_0]");
-                    else return MessageSendResult.InvalidNumberFormat;
+
+                    handler.CookieContainer = _cookieContainer;
+                    using (var client = new HttpClient(handler))
+                    {
+                        HttpResponseMessage response = await client.PostAsync(SendURI, content);
+                        var responseHTML = await response.Content.ReadAsStringAsync();
+                        MessageSendResult res;
+                        if (responseHTML.Contains("erfolgreich"))
+                            res = MessageSendResult.Ok;
+                        else if (responseHTML.Contains("Pro Rufnummer sind maximal"))
+                            res = MessageSendResult.LimitReached;
+                        else if (responseHTML.Contains(
+                            "Eine oder mehrere SMS konnte(n) nicht versendet werden, da die angegebene Empfängernummer ungültig war.")
+                        )
+                        {
+                            if (_exceptionOnInvalidNumberFormat)
+                                throw new FormatException(
+                                    $"The format of the recipient number {m.RecipientNumber} does not match the expected format 00[country][number_without_leading_0]");
+                            else return MessageSendResult.InvalidNumberFormat;
+                        }
+
+                        else res = MessageSendResult.SessionExpired;
+
+                        m.NotifySendingAttempt(res);
+                        if (res == MessageSendResult.Ok) _counter.Success();
+                        else _counter.Fail();
+                        return res;
+                    }
                 }
-                    
-                else res = MessageSendResult.SessionExpired;
-                    
-                m.NotifySendingAttempt(res);
-                if (res == MessageSendResult.Ok) _counter.Success();
-                else _counter.Fail();
-                return res;
             }
             catch (Exception e)
             {
@@ -259,15 +263,22 @@ namespace KontomanagerClient
         {
             try
             {
-                using HttpClientHandler handler = new HttpClientHandler();
-                handler.CookieContainer = _cookieContainer;
-                using var client = new HttpClient(handler);
+                using (HttpClientHandler handler = new HttpClientHandler())
+                {
 
-                HttpResponseMessage response = await client.GetAsync(SendURI);
-                var responseHTML = await response.Content.ReadAsStringAsync();
-                var regex = new Regex(".*<input type=\"hidden\" name=\"token\" value=\"([^\"]*)\">");
-                var match = regex.Match(responseHTML);
-                return match.Groups[1].Value;
+                    handler.CookieContainer = _cookieContainer;
+                    using (var client = new HttpClient(handler))
+                    {
+
+
+
+                        HttpResponseMessage response = await client.GetAsync(SendURI);
+                        var responseHTML = await response.Content.ReadAsStringAsync();
+                        var regex = new Regex(".*<input type=\"hidden\" name=\"token\" value=\"([^\"]*)\">");
+                        var match = regex.Match(responseHTML);
+                        return match.Groups[1].Value;
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -287,26 +298,27 @@ namespace KontomanagerClient
             HttpClientHandler handler = new HttpClientHandler();
             _cookieContainer = new CookieContainer();
             handler.CookieContainer = _cookieContainer;
-            using var client = new HttpClient(handler);
-
-            var content = new FormUrlEncodedContent(new[]
+            using (var client = new HttpClient(handler))
             {
-                new KeyValuePair<string, string>("login_rufnummer", user),
-                new KeyValuePair<string, string>("login_passwort", password)
-            });
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("login_rufnummer", user),
+                    new KeyValuePair<string, string>("login_passwort", password)
+                });
 
-            HttpResponseMessage response = await client.PostAsync(LoginURI, content);
-            IEnumerable<Cookie> responseCookies = _cookieContainer.GetCookies(LoginURI).Cast<Cookie>();
-            foreach (Cookie cookie in responseCookies)
-                Log(cookie.Name + ": " + cookie.Value);
-            string responseHTML = await response.Content.ReadAsStringAsync();
-            if (responseHTML.Contains("Sie sind angemeldet als:"))
-            {
-                _lastConnected = DateTime.Now;
-                ConnectionEstablished?.Invoke(this, EventArgs.Empty);
-                return true;
+                HttpResponseMessage response = await client.PostAsync(LoginURI, content);
+                IEnumerable<Cookie> responseCookies = _cookieContainer.GetCookies(LoginURI).Cast<Cookie>();
+                foreach (Cookie cookie in responseCookies)
+                    Log(cookie.Name + ": " + cookie.Value);
+                string responseHTML = await response.Content.ReadAsStringAsync();
+                if (responseHTML.Contains("Sie sind angemeldet als:"))
+                {
+                    _lastConnected = DateTime.Now;
+                    ConnectionEstablished?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+                else return false;
             }
-            else return false;
         }
 
         /// <summary>
@@ -347,8 +359,8 @@ namespace KontomanagerClient
         {
             _timeout = timeoutSeconds;
             _limit = limit;
-            SuccessfulMessages = new ();
-            FailedMessages = new();
+            SuccessfulMessages = new List<DateTime>();
+            FailedMessages = new List<DateTime>();
         }
 
         public void Success()

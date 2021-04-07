@@ -1,5 +1,9 @@
-# Kontomanager Websms Client .NET 5
-.NET 5 Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria.
+# Kontomanager Websms Client .NET
+.NET Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria.
+
+# Installation
+
+Simply install the nuget package from [https://www.nuget.org/packages/KontomanagerClient](https://www.nuget.org/packages/KontomanagerClient) to your project.
 
 # Carrier Support
 The library was testet for:

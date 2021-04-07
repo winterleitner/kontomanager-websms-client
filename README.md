@@ -62,3 +62,10 @@ Invalid:
 - 436641234567
 - 06641234567
 
+# Similar projects
+
+The following projects seem to do the same thing as this client in other languages. However, I did not test any of them.
+
+- Node.JS client [https://github.com/mklan/educom-sms](https://github.com/mklan/educom-sms)
+- Python Client [https://github.com/cynicer/educom-web-sms](https://github.com/cynicer/educom-web-sms)
+- Python Client [https://git.flo.cx/flowolf/yessssms](https://git.flo.cx/flowolf/yessssms)

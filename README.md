@@ -1,5 +1,5 @@
 # Kontomanager Websms Client .NET
-.NET Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria.
+.NET Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
 
 # Installation
 
@@ -7,14 +7,15 @@ Simply install the nuget package from [https://www.nuget.org/packages/Kontomanag
 
 # Carrier Support
 The library was testet for:
-- [Educom](https://www.educom.at) @ [educom.kontomanager.at](educom.kontomanager.at)
-- [Yesss](https://www.yesss.at) @ [https://www.yesss.at/kontomanager.at/](https://www.yesss.at/kontomanager.at/)
+- [XOXO](https://www.xoxo-mobile.at) @ [xoxo.kontomanager.at](https://xoxo.kontomanager.at)
+- [Yesss](https://www.yesss.at) @ [www.yesss.at/kontomanager.at/](https://www.yesss.at/kontomanager.at/)
+- [~~Educom~~](https://www.educom.at) @ [~~educom.kontomanager.at~~](https://educom.kontomanager.at) | Educom was rebranded to XOXO
 
 Other carriers that use Kontomanager but were not tested include:
-- [Georg](https://georg.at) @ [https://kundencenter.georg.at](https://kundencenter.georg.at)
-- [BilliTel](https://billitel.at) @ [https://billitel.kontomanager.at](https://billitel.kontomanager.at)
-- [Goood](https://goood-mobile.at/) @ [https://goood.kontomanager.at](https://goood.kontomanager.at)
-- [Simfonie](https://www.simfonie.at/home) @ [https://simfonie.kontomanager.at](https://simfonie.kontomanager.at)
+- [Georg](https://georg.at) @ [kundencenter.georg.at](https://kundencenter.georg.at)
+- [BilliTel](https://billitel.at) @ [billitel.kontomanager.at](https://billitel.kontomanager.at)
+- [Goood](https://goood-mobile.at/) @ [goood.kontomanager.at](https://goood.kontomanager.at)
+- [Simfonie](https://www.simfonie.at/home) @ [simfonie.kontomanager.at](https://simfonie.kontomanager.at)
 
 And possibly more. Feel free to add carriers to that list.
 

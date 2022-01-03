@@ -5,11 +5,12 @@
         <Title>Kontomanager Web SMS Client</Title>
         <Authors>Felix Winterleitner</Authors>
         <Description>A client library that wraps the Kontomanager Web Interface used by some Austrian cellular service providers. Enables the usage of the provided Web SMS functionality in .NET</Description>
-        <Copyright>Copyright (c) Felix Winterleitner 2021</Copyright>
+        <Copyright>Copyright (c) Felix Winterleitner 2022</Copyright>
         <RepositoryUrl>https://github.com/winterleitner/kontomanager-websms-client</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
         <TargetFrameworks>net5.0;netcoreapp3.1;netstandard2.0</TargetFrameworks>
+        <PackageVersion>1.1.0</PackageVersion>
     </PropertyGroup>
 
 </Project>

@@ -645,13 +645,15 @@ namespace KontomanagerClient
                 foreach (Cookie cookie in responseCookies)
                     Log(cookie.Name + ": " + cookie.Value);
                 string responseHTML = await response.Content.ReadAsStringAsync();
-                if (responseHTML.Contains("Sie sind angemeldet als:"))
+                var doc = new HtmlDocument();
+                doc.LoadHtml(responseHTML);
+                var success = doc.DocumentNode.SelectSingleNode("//form[@name='loginform']") == null;
+                if (success)
                 {
                     _lastConnected = DateTime.Now;
                     ConnectionEstablished?.Invoke(this, EventArgs.Empty);
                     return true;
                 }
-
                 return false;
             }
         }

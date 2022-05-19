@@ -99,6 +99,12 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 19.05.2022 1.2.2
+- fix wrong used data number for eu data
+
+### 19.05.2022: 1.2.1
+- fix bad return value in CreateConnection
+
 ### 19.05.2022: 1.2.0
 
 - add support for multiple sims managed under one account

@@ -302,7 +302,7 @@ namespace KontomanagerClient
 
                                         if (bl != null)
                                         {
-                                            q.Used = int.Parse(bl.InnerText.Split(' ').Last());
+                                            q.Used = int.Parse(bl.ChildNodes[0].InnerText.Trim().Split(' ').Last());
                                         }
                                     }
                                     else if (ulTextLowered.Contains("minuten") ||

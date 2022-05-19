@@ -25,14 +25,16 @@ Unfortunatly, it is not possible to read the remaining time until a new message 
 
 # Usage
 
-Basic Example
+### Basic Example
 ```c#
-var client = new EducomClient("<login_username/number>", "<login_password>")
+var client = new XOXOClient("<login_username/number>", "<login_password>")
     .EnableDebugLogging(true) // Enables Console Log outputs
     .UseAutoReconnect(true) // Enables automatic re-login after a connection timeout
     .UseQueue() // Enables a queue that reattempts to send messages when the SendLimit is reached
     .ThrowExceptionOnInvalidNumberFormat(true); // Configures the client to throw an exception if a phone number format was rejected by Kontomanager
     
+await client.CreateConnection();
+
 var r = await client.SendMessage("<recipient_number>", "<message>");
 ```
 
@@ -49,6 +51,30 @@ m.SendingAttempted += (sender, result) =>
 };
 var r = await client.SendMessage(m);
 ```
+
+### 1.2.0 Additions
+
+```c#
+var client = new XOXOClient("<login_username/number>", "<login_password>")
+    .EnableDebugLogging(true) // Enables Console Log outputs
+    .UseAutoReconnect(true) // Enables automatic re-login after a connection timeout
+    .UseQueue() // Enables a queue that reattempts to send messages when the SendLimit is reached
+    .ThrowExceptionOnInvalidNumberFormat(true); // Configures the client to throw an exception if a phone number format was rejected by Kontomanager
+    
+await client.CreateConnection();
+
+string firstNumber = await client.GetSelectedPhoneNumber(); // returns the currently selected phone number in format 43681...
+var usage = await client.GetAccountUsage(); // Get Account usage for firstNumber
+usage.PrintToConsole(); // Prints a summary to the console
+
+
+var numbers = await client.GetSelectablePhoneNumbers(); // gets a list of PhoneNumber object for each number linked to the account (has string number and string subscriberId)
+PhoneNumber otherNumber = numbers.First(n => !n.Selected); 
+await client.SelectPhoneNumber(otherNumber); // select other phone number for the client
+var otherNumberUsage = await client.GetAccountUsage(); // get account usage for otherNumber
+otherNumberUsage.PrintToConsole();
+```
+
 
 ### Supported Phone Number Formats
 
@@ -70,3 +96,10 @@ The following projects seem to do the same thing as this client in other languag
 - Node.JS client [https://github.com/mklan/educom-sms](https://github.com/mklan/educom-sms)
 - Python Client [https://github.com/cynicer/educom-web-sms](https://github.com/cynicer/educom-web-sms)
 - Python Client [https://git.flo.cx/flowolf/yessssms](https://git.flo.cx/flowolf/yessssms)
+
+# Changelog
+
+### 19.05.2022: 1.2.0
+
+- add support for multiple sims managed under one account
+- add support for reading basic information on the contract (available min/sms/mb, ...)

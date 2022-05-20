@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Web;
 using HtmlAgilityPack;
 using KontomanagerClient.Exceptions;
 using KontomanagerClient.Model;
@@ -274,7 +275,7 @@ namespace KontomanagerClient
                             var heading = section.SelectSingleNode("h3");
                             if (heading != null)
                             {
-                                pu.PackageName = heading.InnerText.TrimEnd(':');
+                                pu.PackageName = HttpUtility.HtmlDecode(heading.InnerText.TrimEnd(':'));
                             }
 
                             var progressItems = section.SelectNodes("div[@class='progress-item']");
@@ -373,7 +374,7 @@ namespace KontomanagerClient
                                     {
                                         if (item.ChildNodes.Count == 2)
                                         {
-                                            var infoTitle = item.ChildNodes[0].InnerText.TrimEnd(':', ' ');
+                                            var infoTitle = HttpUtility.HtmlDecode(item.ChildNodes[0].InnerText.TrimEnd(':', ' '));
                                             var lowerTitle = infoTitle.ToLower();
                                             if (lowerTitle.Contains("datenvolumen") && lowerTitle.Contains("eu"))
                                             {
@@ -402,19 +403,19 @@ namespace KontomanagerClient
                                                 result.Credit =
                                                     decimal.Parse(item.ChildNodes[1].ChildNodes[0].InnerText.Split(' ')[1].Replace(',', '.'));
                                             }
-                                            else if (lowerTitle.Contains("gültig von"))
+                                            else if (lowerTitle.Contains("gültig von") || lowerTitle.Contains("aktivierung des paket"))
                                             {
                                                 pu.UnitsValidFrom = DateTime.ParseExact(item.ChildNodes[1].InnerText,
                                                     "dd.MM.yyyy HH:mm", null);
                                             }
-                                            else if (lowerTitle.Contains("gültig bis"))
+                                            else if (lowerTitle.Contains("gültig bis") || lowerTitle.Contains("gültigkeit des paket"))
                                             {
                                                 pu.UnitsValidUntil = DateTime.ParseExact(item.ChildNodes[1].InnerText,
                                                     "dd.MM.yyyy HH:mm", null);
                                             }
                                             else
                                             {
-                                                pu.AdditionalInformation[infoTitle] = item.ChildNodes[1].InnerText;
+                                                pu.AdditionalInformation[infoTitle] = HttpUtility.HtmlDecode(item.ChildNodes[1].InnerText);
                                             }
                                         }
                                     }

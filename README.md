@@ -99,6 +99,10 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 20.05.2022 1.2.3
+- fix issue with package validity not being read for some packages
+- add .net6 as target framework
+
 ### 19.05.2022 1.2.2
 - fix wrong used data number for eu data
 

@@ -99,6 +99,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 03.06.2022 1.2.5
+- fix issue that caused an exception when trying to switch to a phone number that has been deactivated
+
 ### 20.05.2022 1.2.3
 - fix issue with package validity not being read for some packages
 - add .net6 as target framework

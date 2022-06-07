@@ -184,7 +184,7 @@ namespace KontomanagerClient
             foreach (var row in doc.DocumentNode.SelectNodes("//tr"))
             {
                 var childTds = row.SelectNodes("td");
-                if (childTds.Count == 0 || !childTds.First().InnerText.StartsWith("Ihre Rufnummer")) continue;
+                if (childTds is null || childTds.Count == 0 || !childTds.First().InnerText.StartsWith("Ihre Rufnummer")) continue;
                 return childTds.Last().InnerText;
             }
 

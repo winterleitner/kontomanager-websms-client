@@ -191,8 +191,24 @@ namespace KontomanagerClient
             return null;
         }
 
+        private IEnumerable<PhoneNumber> ExtractSelectablePhoneNumbersFromHomePage(string homePageHtml)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(homePageHtml);
+            var form = doc.GetElementbyId("subscriber_dropdown_form");
+            if (form is null)
+                return new List<PhoneNumber>();
+            return form.SelectNodes("//select/option").Select(o => new PhoneNumber()
+            {
+                Number = o.InnerText.Split('-').First().Trim(),
+                SubscriberId = o.GetAttributeValue("value", null),
+                Selected = o.GetAttributeValue("selected", "") == "selected"
+            });
+        }
+
         /// <summary>
         /// Returns a list of all phone numbers linked to the account.
+        /// If the account is a single-sim account without a group, an empty list is returned.
         /// </summary>
         /// <returns></returns>
         public async Task<IEnumerable<PhoneNumber>> GetSelectablePhoneNumbers()
@@ -206,20 +222,7 @@ namespace KontomanagerClient
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException("Could not determine the selectable phone numbers");
                     var responseHtml = await response.Content.ReadAsStringAsync();
-                    var doc = new HtmlDocument();
-                    doc.LoadHtml(responseHtml);
-                    var form = doc.GetElementbyId("subscriber_dropdown_form");
-                    if (form is null)
-                        return new List<PhoneNumber>()
-                        {
-                            new PhoneNumber() { Number = ExtractSelectedPhoneNumberFromSettingsPage(responseHtml) }
-                        };
-                    return form.SelectNodes("//select/option").Select(o => new PhoneNumber()
-                    {
-                        Number = o.InnerText.Split('-').First().Trim(),
-                        SubscriberId = o.GetAttributeValue("value", null),
-                        Selected = o.GetAttributeValue("selected", "") == "selected"
-                    });
+                    return ExtractSelectablePhoneNumbersFromHomePage(responseHtml);
                 }
             }
         }
@@ -243,7 +246,16 @@ namespace KontomanagerClient
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException("Could not change the selected phone number");
                     var responseHtml = await response.Content.ReadAsStringAsync();
-                    if (ExtractSelectedPhoneNumberFromSettingsPage(responseHtml) != number.Number)
+                    // If the corresponding sim card has been deactivated, settings.php will automatically redirect to kundendaten.php
+                    if (response.RequestMessage.RequestUri.AbsoluteUri.EndsWith("kundendaten.php"))
+                    {
+                        if (ExtractSelectablePhoneNumbersFromHomePage(responseHtml)
+                                .FirstOrDefault(n => n.SubscriberId == number.SubscriberId) is null)
+                        {
+                            throw new Exception("Could not change the selected phone number");
+                        }
+                    }
+                    else if (ExtractSelectedPhoneNumberFromSettingsPage(responseHtml) != number.Number)
                         throw new Exception("Could not change the selected phone number");
                 }
             }

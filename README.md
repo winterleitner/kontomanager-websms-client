@@ -99,6 +99,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 07.06.2022 1.2.6
+- fix issue that caused an exception when the settings.php page redirects to kundendaten.php for disabled phone numbers
+
 ### 03.06.2022 1.2.5
 - fix issue that caused an exception when trying to switch to a phone number that has been deactivated
 

@@ -99,6 +99,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 07.06.2022 1.2.7
+- added a function to extract the selected phone number from the header
+
 ### 07.06.2022 1.2.6
 - fix issue that caused an exception when the settings.php page redirects to kundendaten.php for disabled phone numbers
 

@@ -169,11 +169,31 @@ namespace KontomanagerClient
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException("Could not determine the selected phone number");
                     var responseHtml = await response.Content.ReadAsStringAsync();
-                    var number = ExtractSelectedPhoneNumberFromSettingsPage(responseHtml);
+                    string number = null;
+                    if (response.RequestMessage.RequestUri.AbsoluteUri.EndsWith("kundendaten.php"))
+                    {
+                        number = ExtractSelectedPhoneNumberFromHeaderElement(responseHtml);
+                        var nums = ExtractSelectablePhoneNumbersFromHomePage(responseHtml).ToList();
+                        number = !nums.Any() ? ExtractSelectedPhoneNumberFromHeaderElement(responseHtml) : nums.FirstOrDefault(n => n.Selected)?.Number;
+                    }
+                    else number = ExtractSelectedPhoneNumberFromSettingsPage(responseHtml);
                     if (number is null) throw new Exception("Phone number could not be found");
                     return number;
                 }
             }
+        }
+
+        private string ExtractSelectedPhoneNumberFromHeaderElement(string pageHtml)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(pageHtml);
+
+            var nodes = doc.DocumentNode.SelectNodes("//div[@class='loggedin']");
+            var selectedNumberNode = nodes.LastOrDefault();
+            if (selectedNumberNode is null) return null;
+            var pattern = @"\d+\/\d*";
+            var match = Regex.Match(selectedNumberNode.InnerHtml, pattern);
+            return $"43{match.Value.Replace("/", "").Substring(1)}";
         }
 
         private string ExtractSelectedPhoneNumberFromSettingsPage(string settingsPageHtml)

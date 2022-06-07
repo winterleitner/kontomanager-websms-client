@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.2.7] - 2022-06-07
+- added a function to extract the selected phone number from the header
+
 ## [1.2.6] - 2022-06-07
 - fix issue that caused an exception when the settings.php page redirects to kundendaten.php for disabled phone numbers
 

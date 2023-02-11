@@ -1,6 +1,10 @@
 # Kontomanager Websms Client .NET
 .NET Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
 
+# UPDATE 02/2023
+As of right now, a new version of the Kontomanager Website prevents this library from functioning in the current version.
+This will be fixed in a future update.
+
 # Installation
 
 Simply install the nuget package from [https://www.nuget.org/packages/KontomanagerClient](https://www.nuget.org/packages/KontomanagerClient) to your project.

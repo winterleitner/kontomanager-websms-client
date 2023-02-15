@@ -2,19 +2,19 @@
 
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Title>Kontomanager Web SMS Client</Title>
+        <Title>Kontomanager .NET Client</Title>
         <Authors>Felix Winterleitner</Authors>
-        <Description>A client library that wraps the Kontomanager Web Interface used by some Austrian cellular service providers. Enables the usage of the provided Web SMS functionality and querying of usage stats in .NET</Description>
-        <Copyright>Copyright (c) Felix Winterleitner 2022</Copyright>
+        <Description>A client library that wraps the Kontomanager Web Interface used by some Austrian cellular service providers. Enables querying of usage stats in .NET</Description>
+        <Copyright>Copyright (c) Felix Winterleitner 2023</Copyright>
         <RepositoryUrl>https://github.com/winterleitner/kontomanager-websms-client</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
-        <TargetFrameworks>net5.0;net6.0;netcoreapp3.1;netstandard2.0</TargetFrameworks>
-        <PackageVersion>1.2.7</PackageVersion>
+        <TargetFrameworks>net5.0;net6.0;net7.0;netcoreapp3.1;netstandard2.0</TargetFrameworks>
+        <PackageVersion>2.0.0</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="HtmlAgilityPack" Version="1.11.42" />
+      <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
     </ItemGroup>
 
 </Project>

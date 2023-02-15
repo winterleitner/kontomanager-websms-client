@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KontomanagerClientDemo", "K
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KontomanagerClientTests", "KontomanagerClientTests\KontomanagerClientTests.csproj", "{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject", "TestProject\TestProject.csproj", "{2979450B-5EC0-4F19-8CD1-791D1A3C8751}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5EC4F31-27C9-4E70-9C13-BC8EA2BC7B37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2979450B-5EC0-4F19-8CD1-791D1A3C8751}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2979450B-5EC0-4F19-8CD1-791D1A3C8751}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2979450B-5EC0-4F19-8CD1-791D1A3C8751}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2979450B-5EC0-4F19-8CD1-791D1A3C8751}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

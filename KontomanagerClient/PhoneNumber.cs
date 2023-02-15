@@ -3,6 +3,10 @@ namespace KontomanagerClient
 
     public class PhoneNumber
     {
+        /// <summary>
+        /// User chosen name for the number.
+        /// </summary>
+        public string Name { get; set; }
         public string Number { get; set; }
         public string SubscriberId { get; set; }
         

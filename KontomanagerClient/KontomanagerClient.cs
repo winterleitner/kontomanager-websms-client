@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
@@ -25,14 +25,13 @@ namespace KontomanagerClient
         #region Parameters
 
         private int _sessionTimeoutSeconds = 10 * 60;
-        private bool _autoReconnect = true;
         private bool _useQueue = false;
         private bool _enableDebugLogging = false;
-        private bool _exceptionOnInvalidNumberFormat = false;
 
         protected HashSet<string> _excludedSections = new HashSet<string>()
         {
-            "Ukraine Freieinheiten", "Ihre Kostenkontrolle"
+            "Ukraine Freieinheiten", "Ihre Kostenkontrolle", "TUR SYR Einheiten", "Verknüpfte Rufnummern",
+            "Aktuelle Kosten", "Oft benutzt"
         };
 
         #endregion
@@ -46,25 +45,22 @@ namespace KontomanagerClient
 
         #endregion
 
+        private CookieContainer _cookieContainer = new CookieContainer();
+        private readonly HttpClientHandler _httpClientHandler;
+        private readonly HttpClient _httpClient;
+
         protected readonly Uri BaseUri;
-        protected readonly Uri LoginUri;
-        protected readonly Uri SendUri;
-        protected readonly Uri SettingsUri;
+        public string LoginPath { get; set; } = "index.php";
+        public string SettingsPath { get; set; } = "einstellungen_profil.php";
+        public string AccountUsagePath { get; set; } = "kundendaten.php";
 
         private DateTime _lastConnected = DateTime.MinValue;
 
-        private CookieContainer _cookieContainer = new CookieContainer();
 
         private readonly string _user;
         private readonly string _password;
 
-        #region Send Queue
-
-        private BlockingCollection<Message> Messages = new BlockingCollection<Message>();
-        public MessageCounter _counter = new MessageCounter(60 * 60, 50);
-
-        #endregion
-
+        private readonly Dictionary<string, string> _numberToSubscriberId = new Dictionary<string, string>();
 
         public bool Connected => DateTime.Now - _lastConnected < TimeSpan.FromSeconds(_sessionTimeoutSeconds);
 
@@ -74,18 +70,18 @@ namespace KontomanagerClient
         /// </summary>
         /// <param name="user"></param>
         /// <param name="password"></param>
-        protected KontomanagerClient(string user, string password, Uri baseUri, Uri loginUri, Uri sendUri)
+        protected KontomanagerClient(string user, string password, Uri baseUri)
         {
             _user = user;
             _password = password;
             BaseUri = baseUri;
-            LoginUri = loginUri;
-            SendUri = sendUri;
 
-            /*
-             * More uris can be changed in subclasses via protected fields
-             */
-            SettingsUri = new Uri(Path.Combine(BaseUri.AbsoluteUri, "einstellungen.php"));
+            _cookieContainer.Add(new Cookie("CookieSettings",
+                "%7B%22categories%22%3A%5B%22necessary%22%2C%22improve_offers%22%5D%7D", "/", "yesss.at"));
+            _httpClientHandler = new HttpClientHandler();
+            _httpClientHandler.CookieContainer = _cookieContainer;
+            _httpClient = new HttpClient(_httpClientHandler);
+            _httpClient.BaseAddress = baseUri;
         }
 
         /// <summary>
@@ -99,60 +95,6 @@ namespace KontomanagerClient
             return this;
         }
 
-        public KontomanagerClient UseAutoReconnect(bool value)
-        {
-            _autoReconnect = value;
-            return this;
-        }
-
-        /// <summary>
-        /// Configures the Client to use a FIFO queue to ensure all messages are sent (provided that the app does not shut down).
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public KontomanagerClient UseQueue()
-        {
-            _useQueue = true;
-            Task.Run(StartQueueConsumer);
-            return this;
-        }
-
-        private async void StartQueueConsumer()
-        {
-            while (!Messages.IsCompleted)
-            {
-                if (!_counter.CanSend())
-                {
-                    var delay = _counter.TimeUntilNewElementPossible();
-                    Log($"Waiting {delay.TotalSeconds} seconds for next message. {Messages.Count} messages waiting.");
-                    await Task.Delay(_counter.TimeUntilNewElementPossible());
-                }
-
-                var m = Messages.Take();
-                var res = await SendMessageWithReconnect(m);
-                while (res != MessageSendResult.Ok)
-                {
-                    var delay = _counter.TimeUntilNewElementPossible();
-                    Log(
-                        $"Waiting {delay.TotalSeconds} seconds for resending message. Result was {res}. {Messages.Count} messages waiting in queue.");
-                    await Task.Delay(_counter.TimeUntilNewElementPossible());
-                }
-
-                await Task.Delay(1000);
-            }
-        }
-
-        /// <summary>
-        /// Specifies if the SendMessage method should throw an exception when the number format specified is invalid.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public KontomanagerClient ThrowExceptionOnInvalidNumberFormat(bool value)
-        {
-            _exceptionOnInvalidNumberFormat = value;
-            return this;
-        }
-
         /// <summary>
         /// Returns the phone number for which the client is currently active.
         /// This is relevant when multiple phone numbers are grouped in one account.
@@ -160,40 +102,16 @@ namespace KontomanagerClient
         /// <returns></returns>
         public async Task<string> GetSelectedPhoneNumber()
         {
-            using (HttpClientHandler handler = new HttpClientHandler())
-            {
-                handler.CookieContainer = _cookieContainer;
-                using (var client = new HttpClient(handler))
-                {
-                    HttpResponseMessage response = await client.GetAsync(SettingsUri);
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException("Could not determine the selected phone number");
-                    var responseHtml = await response.Content.ReadAsStringAsync();
-                    string number = null;
-                    if (response.RequestMessage.RequestUri.AbsoluteUri.EndsWith("kundendaten.php"))
-                    {
-                        number = ExtractSelectedPhoneNumberFromHeaderElement(responseHtml);
-                        var nums = ExtractSelectablePhoneNumbersFromHomePage(responseHtml).ToList();
-                        number = !nums.Any() ? ExtractSelectedPhoneNumberFromHeaderElement(responseHtml) : nums.FirstOrDefault(n => n.Selected)?.Number;
-                    }
-                    else number = ExtractSelectedPhoneNumberFromSettingsPage(responseHtml);
-                    if (number is null) throw new Exception("Phone number could not be found");
-                    return number;
-                }
-            }
-        }
+            if (!Connected)
+                await Reconnect();
+            HttpResponseMessage response = await _httpClient.GetAsync(SettingsPath);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException("Could not determine the selected phone number");
+            var responseHtml = await response.Content.ReadAsStringAsync();
+            string number = ExtractSelectedPhoneNumberFromSettingsPage(responseHtml);
 
-        private string ExtractSelectedPhoneNumberFromHeaderElement(string pageHtml)
-        {
-            var doc = new HtmlDocument();
-            doc.LoadHtml(pageHtml);
-
-            var nodes = doc.DocumentNode.SelectNodes("//div[@class='loggedin']");
-            var selectedNumberNode = nodes.LastOrDefault();
-            if (selectedNumberNode is null) return null;
-            var pattern = @"\d+\/\d*";
-            var match = Regex.Match(selectedNumberNode.InnerHtml, pattern);
-            return $"43{match.Value.Replace("/", "").Substring(1)}";
+            if (number is null) throw new Exception("Phone number could not be found");
+            return number;
         }
 
         private string ExtractSelectedPhoneNumberFromSettingsPage(string settingsPageHtml)
@@ -201,29 +119,96 @@ namespace KontomanagerClient
             var doc = new HtmlDocument();
             doc.LoadHtml(settingsPageHtml);
 
-            foreach (var row in doc.DocumentNode.SelectNodes("//tr"))
+            foreach (var row in doc.DocumentNode.SelectNodes("//li[@class='list-group-item']"))
             {
-                var childTds = row.SelectNodes("td");
-                if (childTds is null || childTds.Count == 0 || !childTds.First().InnerText.StartsWith("Ihre Rufnummer")) continue;
-                return childTds.Last().InnerText;
+                if (row.HasClass("list-group-header")) continue;
+                var d = row.SelectSingleNode("./div");
+                var sides = d.SelectNodes("./div");
+                if (sides.Count < 2 ||
+                    !sides[0].InnerText.StartsWith("Rufnummer")) continue;
+                return sides.Last().InnerText;
             }
 
             return null;
         }
-
-        private IEnumerable<PhoneNumber> ExtractSelectablePhoneNumbersFromHomePage(string homePageHtml)
+        
+        private PhoneNumber ExtractPhoneNumberFromDropdown(HtmlNode liNode)
         {
+            if (liNode is null || liNode.InnerHtml.Contains("index.php?dologout=2") || (liNode.FirstChild != null && liNode.FirstChild.HasClass("dropdown-divider"))) return null;
+            var name = liNode.SelectSingleNode(".//span").InnerText;
+            
+            var pattern = @"\d+\/\d*";
+            var match = Regex.Match(liNode.InnerHtml, pattern);
+            var number = $"43{match.Value.Replace("/", "").Substring(1)}";
+            
+            var subscriberId = liNode.SelectSingleNode("./a").Attributes["href"].Value == "#" ? 
+                null :
+                HttpUtility.UrlDecode(Regex.Match(liNode.SelectSingleNode("./a").Attributes["href"].Value, @"subscriber=([^&]*)").Groups[1].Value);
+            if (string.IsNullOrEmpty(subscriberId))
+            {
+                if (_numberToSubscriberId.ContainsKey(number))
+                    subscriberId = _numberToSubscriberId[number];
+            }
+            else
+            {
+                _numberToSubscriberId[number] = subscriberId;
+            }
+            var isSelected = GetPreviousActualSibling(liNode)?.InnerText.ToLower().Contains("aktuell gewählte rufnummer")??false;
+
+            return new PhoneNumber()
+            {
+                Name = name, SubscriberId = subscriberId, Number = number,
+                Selected = isSelected
+            };
+        }
+
+        private HtmlNode GetPreviousActualSibling(HtmlNode n)
+        {
+            HtmlNode res = n;
+            while (res != null && (res == n || res.NodeType != n.NodeType))
+            {
+                if (res.PreviousSibling == null) return null;
+                res = res.PreviousSibling;
+            }
+
+            return res;
+        }
+        private HtmlNode GetNextActualSibling(HtmlNode n)
+        {
+            HtmlNode res = n;
+            while (res != null && (res == n || res.NodeType != n.NodeType))
+            {
+                if (res.NextSibling == null) return null;
+                res = res.NextSibling;
+            }
+
+            return res;
+        }
+        private IEnumerable<PhoneNumber> ExtractSelectablePhoneNumbersFromDropdown(string homePageHtml)
+        {
+            var res = new List<PhoneNumber>();
             var doc = new HtmlDocument();
             doc.LoadHtml(homePageHtml);
-            var form = doc.GetElementbyId("subscriber_dropdown_form");
-            if (form is null)
-                return new List<PhoneNumber>();
-            return form.SelectNodes("//select/option").Select(o => new PhoneNumber()
+
+            var dd = doc.DocumentNode.SelectSingleNode("//ul[@aria-labelledby='user-dropdown']");
+            if (dd is null) return res;
+
+            // Selected Number
+            var sn = dd.ChildNodes.FirstOrDefault(n => n.InnerText.ToLower().Contains("aktuell gewählte rufnummer"));
+            if (sn != null && GetNextActualSibling(sn) != null)
             {
-                Number = o.InnerText.Split('-').First().Trim(),
-                SubscriberId = o.GetAttributeValue("value", null),
-                Selected = o.GetAttributeValue("selected", "") == "selected"
-            });
+                res.Add(ExtractPhoneNumberFromDropdown(GetNextActualSibling(sn)));
+            }
+            //other numbers
+            var an = dd.ChildNodes.FirstOrDefault(n => n.InnerText.ToLower().Contains("rufnummer wechseln"));
+            if (an is null) return null;
+            while (GetNextActualSibling(an) != null)
+            {
+                an = GetNextActualSibling(an);
+                res.Add(ExtractPhoneNumberFromDropdown(an));
+            }
+
+            return res.Where(n => n != null);
         }
 
         /// <summary>
@@ -233,18 +218,13 @@ namespace KontomanagerClient
         /// <returns></returns>
         public async Task<IEnumerable<PhoneNumber>> GetSelectablePhoneNumbers()
         {
-            using (HttpClientHandler handler = new HttpClientHandler())
-            {
-                handler.CookieContainer = _cookieContainer;
-                using (var client = new HttpClient(handler))
-                {
-                    HttpResponseMessage response = await client.GetAsync(SettingsUri);
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException("Could not determine the selectable phone numbers");
-                    var responseHtml = await response.Content.ReadAsStringAsync();
-                    return ExtractSelectablePhoneNumbersFromHomePage(responseHtml);
-                }
-            }
+            if (!Connected)
+                await Reconnect();
+            HttpResponseMessage response = await _httpClient.GetAsync(SettingsPath);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException("Could not determine the selectable phone numbers");
+            var responseHtml = await response.Content.ReadAsStringAsync();
+            return ExtractSelectablePhoneNumbersFromDropdown(responseHtml);
         }
 
         /// <summary>
@@ -252,357 +232,240 @@ namespace KontomanagerClient
         /// </summary>
         public async Task SelectPhoneNumber(PhoneNumber number)
         {
+            if (number == null || number.SubscriberId == null)
+                throw new Exception("No subscriber id provided!");
+            
             var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("groupaction", "change_subscriber"),
                 new KeyValuePair<string, string>("subscriber", number.SubscriberId),
             });
-            using (HttpClientHandler handler = new HttpClientHandler())
+            
+            if (!Connected)
+                await Reconnect();
+
+            HttpResponseMessage response = await _httpClient.PostAsync(AccountUsagePath, content);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException("Could not change the selected phone number");
+            var responseHtml = await response.Content.ReadAsStringAsync();
+            // If the corresponding sim card has been deactivated, settings.php will automatically redirect to kundendaten.php
+            if (response.RequestMessage.RequestUri.AbsoluteUri.EndsWith("kundendaten.php"))
             {
-                handler.CookieContainer = _cookieContainer;
-                using (var client = new HttpClient(handler))
+                if (ExtractSelectablePhoneNumbersFromDropdown(responseHtml)
+                        .FirstOrDefault(n => n.SubscriberId == number.SubscriberId) is null)
                 {
-                    HttpResponseMessage response = await client.PostAsync(SettingsUri, content);
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException("Could not change the selected phone number");
-                    var responseHtml = await response.Content.ReadAsStringAsync();
-                    // If the corresponding sim card has been deactivated, settings.php will automatically redirect to kundendaten.php
-                    if (response.RequestMessage.RequestUri.AbsoluteUri.EndsWith("kundendaten.php"))
-                    {
-                        if (ExtractSelectablePhoneNumbersFromHomePage(responseHtml)
-                                .FirstOrDefault(n => n.SubscriberId == number.SubscriberId) is null)
-                        {
-                            throw new Exception("Could not change the selected phone number");
-                        }
-                    }
-                    else if (ExtractSelectedPhoneNumberFromSettingsPage(responseHtml) != number.Number)
-                        throw new Exception("Could not change the selected phone number");
+                    throw new Exception("Could not change the selected phone number");
                 }
             }
+            else if (ExtractSelectedPhoneNumberFromSettingsPage(responseHtml) != number.Number)
+                throw new Exception("Could not change the selected phone number");
         }
 
+        /// <summary>
+        /// Loads the account usage for the selected phone number.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="HttpRequestException"></exception>
         public async Task<AccountUsage> GetAccountUsage()
         {
-            using (HttpClientHandler handler = new HttpClientHandler())
-            {
-                handler.CookieContainer = _cookieContainer;
-                using (var client = new HttpClient(handler))
-                {
-                    HttpResponseMessage response = await client.GetAsync(BaseUri);
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException("Could not get account usage");
-                    var responseHtml = await response.Content.ReadAsStringAsync();
-                    var doc = new HtmlDocument();
-                    doc.LoadHtml(responseHtml);
-
-                    var result = new AccountUsage();
-
-                    IEnumerable<PackageUsage> ParseBasePageSections()
-                    {
-                        var res = new List<PackageUsage>();
-                        var contentAreas = doc.DocumentNode.SelectNodes("//div[@class='progress-list']");
-                        foreach (var section in contentAreas)
-                        {
-                            var pu = new PackageUsage();
-                            var heading = section.SelectSingleNode("h3");
-                            if (heading != null)
-                            {
-                                pu.PackageName = HttpUtility.HtmlDecode(heading.InnerText.TrimEnd(':'));
-                            }
-
-                            var progressItems = section.SelectNodes("div[@class='progress-item']");
-                            if (progressItems != null)
-                            {
-                                foreach (var progressItem in progressItems)
-                                {
-                                    var ul = progressItem.SelectSingleNode("div[@class='progress-heading left']");
-                                    var ur = progressItem.SelectSingleNode("div[@class='progress-heading right']");
-                                    var bl = progressItem.SelectSingleNode("div[@class='bar-label']");
-                                    var br = progressItem.SelectSingleNode("div[@class='bar-label-right']");
-
-                                    if (ul == null) continue;
-                                    var ulTextLowered = ul.InnerText.ToLower();
-                                    if (ulTextLowered.Contains("daten"))
-                                    {
-                                        UnitQuota q = ulTextLowered.Contains("eu") ? pu.DataEu : pu.Data;
-                                        if (ur != null)
-                                        {
-                                            var totText = ur.InnerText.Split(' ').First();
-                                            q.Total = totText.ToLower() == "unlimited"
-                                                ? 999999
-                                                : int.Parse(ur.InnerText.Split(' ').First());
-                                        }
-
-                                        if (bl != null)
-                                        {
-                                            q.Used = int.Parse(bl.ChildNodes[0].InnerText.Trim().Split(' ').Last());
-                                        }
-                                    }
-                                    else if (ulTextLowered.Contains("minuten") ||
-                                             (ur != null && ur.InnerText.ToLower().Contains("minuten")))
-                                    {
-                                        if (ur != null)
-                                        {
-                                            if (ur.InnerText.ToLower().Contains("sms"))
-                                                pu.MinutesAndSmsQuotasShared = true;
-                                            if (ur.InnerText.ToLower().Split(' ').First() == "unlimited")
-                                                pu.Minutes.Total = 10000;
-                                            else pu.Minutes.Total = int.Parse(ulTextLowered.Split(' ').First());
-                                        }
-
-                                        if (bl != null)
-                                        {
-                                            pu.Minutes.Used = int.Parse(bl.InnerText.Split(' ').Last());
-                                        }
-
-                                        if (pu.MinutesAndSmsQuotasShared)
-                                        {
-                                            pu.Sms = pu.Minutes;
-                                        }
-                                    }
-                                    else if (ulTextLowered.Contains("sms") &&
-                                             !ulTextLowered.Contains("kostenwarnung") ||
-                                             (ur != null && ur.InnerText.ToLower().Contains("sms")))
-                                    {
-                                        if (ur != null)
-                                        {
-                                            if (ur.InnerText.ToLower().Split(' ').First() == "unlimited")
-                                                pu.Sms.Total = 10000;
-                                            else pu.Sms.Total = int.Parse(ur.InnerText.ToLower().Split(' ').First());
-                                        }
-
-                                        if (bl != null)
-                                        {
-                                            pu.Sms.Used = int.Parse(bl.InnerText.Split(' ').Last());
-                                        }
-                                    }
-                                    else if (ulTextLowered.Contains("ö") && ulTextLowered.Contains("eu") &&
-                                             ulTextLowered.Contains("minuten"))
-                                    {
-                                        if (ur != null)
-                                        {
-                                            if (ulTextLowered.Split(' ').First() == "unlimited")
-                                                pu.AustriaToEuMinutes.Total = 10000;
-                                            else
-                                                pu.AustriaToEuMinutes.Total =
-                                                    int.Parse(ulTextLowered.Split(' ').First());
-                                        }
-
-                                        if (bl != null)
-                                        {
-                                            pu.AustriaToEuMinutes.Used = int.Parse(bl.InnerText.Split(' ').First());
-                                        }
-                                    }
-                                }
-                            }
-
-                            var infoTable = section.SelectSingleNode(".//table[@class='info-list']");
-                            if (infoTable != null)
-                            {
-                                var infoItems = section.SelectNodes(".//td[@class='info-item']");
-                                if (infoItems != null)
-                                {
-                                    foreach (var item in infoItems)
-                                    {
-                                        if (item.ChildNodes.Count == 2)
-                                        {
-                                            var infoTitle = HttpUtility.HtmlDecode(item.ChildNodes[0].InnerText.TrimEnd(':', ' '));
-                                            var lowerTitle = infoTitle.ToLower();
-                                            if (lowerTitle.Contains("datenvolumen") && lowerTitle.Contains("eu"))
-                                            {
-                                                try
-                                                {
-                                                    pu.DataEu.Total =
-                                                        int.Parse(item.ChildNodes[1].InnerText.Split(' ')[3]);
-                                                    pu.DataEu.CorrectRemainingFree(
-                                                        int.Parse(item.ChildNodes[1].InnerText.Split(' ')[0]));
-                                                }
-                                                catch
-                                                {
-                                                }
-                                            }
-                                            else if (lowerTitle.Contains("gültigkeit") && lowerTitle.Contains("sim"))
-                                            {
-                                                result.Prepaid = true;
-                                                result.SimCardValidUntil = DateTime.ParseExact(item.ChildNodes[1].InnerText, "dd.MM.yyyy", null);
-                                            }
-                                            else if (lowerTitle.Contains("letzte aufladung"))
-                                            {
-                                                result.LastRecharge = DateTime.ParseExact(item.ChildNodes[1].InnerText, "dd.MM.yyyy", null);
-                                            }
-                                            else if (lowerTitle.Contains("guthaben"))
-                                            {
-                                                result.Credit =
-                                                    decimal.Parse(item.ChildNodes[1].ChildNodes[0].InnerText.Split(' ')[1].Replace(',', '.'));
-                                            }
-                                            else if (lowerTitle.Contains("gültig von") || lowerTitle.Contains("aktivierung des paket"))
-                                            {
-                                                pu.UnitsValidFrom = DateTime.ParseExact(item.ChildNodes[1].InnerText,
-                                                    "dd.MM.yyyy HH:mm", null);
-                                            }
-                                            else if (lowerTitle.Contains("gültig bis") || lowerTitle.Contains("gültigkeit des paket"))
-                                            {
-                                                pu.UnitsValidUntil = DateTime.ParseExact(item.ChildNodes[1].InnerText,
-                                                    "dd.MM.yyyy HH:mm", null);
-                                            }
-                                            else
-                                            {
-                                                pu.AdditionalInformation[infoTitle] = HttpUtility.HtmlDecode(item.ChildNodes[1].InnerText);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if (!_excludedSections.Contains(pu.PackageName))
-                                res.Add(pu);
-                        }
-
-                        var dataItemListTable = doc.DocumentNode.SelectSingleNode("//table[@class='data-item-list']");
-                        if (dataItemListTable != null)
-                        {
-                            var trs = dataItemListTable.SelectNodes(".//tr");
-                            if (trs != null)
-                            {
-                                foreach (var tr in trs)
-                                {
-                                    var tds = tr.SelectNodes(".//td");
-                                    if (tds.Count != 2) continue;
-                                    var lowerTitle = tds[0].InnerText.ToLower();
-                                    if (lowerTitle.Contains("rechnungsdatum"))
-                                    {
-                                        result.InvoiceDate = DateTime.ParseExact(tds[1].InnerText, "dd.MM.yyyy", null);
-                                    }
-                                    else if (lowerTitle.Contains("vorläufige kosten"))
-                                    {
-                                        result.Cost = decimal.Parse(tds[1].InnerText.Split(' ')[1].Replace(',', '.'));
-                                    }
-                                }
-                            }
-                        }
-
-
-                        return res;
-                    }
-
-                    var sections = ParseBasePageSections();
-                    result.Number = await GetSelectedPhoneNumber();
-                    result.PackageUsages = sections.ToList();
-                    return result;
-                    // TODO: parse base page
-                }
-            }
-        }
-
-
-        /// <summary>
-        /// Depending on configuration enqueues or directly sends the message m.
-        /// If the queue is used, MessageSendResult.Enqueued is returned. The actual result is then obtained by subscribing to the message's SendingAttempted event.
-        /// </summary>
-        /// <param name="m"></param>
-        /// <returns></returns>
-        public async Task<MessageSendResult> SendMessage(Message m)
-        {
-            if (_useQueue)
-            {
-                Messages.Add(m);
-                return MessageSendResult.MessageEnqueued;
-            }
-            else
-            {
-                if (_autoReconnect)
-                    return await SendMessageWithReconnect(m);
-                else return await CallMessageSendingEndpoint(m);
-            }
-        }
-
-        public async Task<MessageSendResult> SendMessage(string recipient, string message)
-        {
-            return await SendMessage(new Message(recipient, message));
-        }
-
-        /// <summary>
-        /// Calls the Message Sending endpoint and tries to send the message. Returns the result.
-        /// </summary>
-        /// <param name="m"></param>
-        /// <returns></returns>
-        private async Task<MessageSendResult> CallMessageSendingEndpoint(Message m)
-        {
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("telefonbuch", "-"),
-                new KeyValuePair<string, string>("to_netz", "a"),
-                new KeyValuePair<string, string>("to_nummer", m.RecipientNumber),
-                new KeyValuePair<string, string>("nachricht", m.Body),
-                new KeyValuePair<string, string>("token", await GetToken())
-            });
-            try
-            {
-                using (HttpClientHandler handler = new HttpClientHandler())
-                {
-                    handler.CookieContainer = _cookieContainer;
-                    using (var client = new HttpClient(handler))
-                    {
-                        HttpResponseMessage response = await client.PostAsync(SendUri, content);
-                        var responseHTML = await response.Content.ReadAsStringAsync();
-                        MessageSendResult res;
-                        if (responseHTML.Contains("erfolgreich"))
-                            res = MessageSendResult.Ok;
-                        else if (responseHTML.Contains("Pro Rufnummer sind maximal"))
-                            res = MessageSendResult.LimitReached;
-                        else if (responseHTML.Contains(
-                                     "Eine oder mehrere SMS konnte(n) nicht versendet werden, da die angegebene Empfängernummer ungültig war.")
-                                )
-                        {
-                            if (_exceptionOnInvalidNumberFormat)
-                                throw new FormatException(
-                                    $"The format of the recipient number {m.RecipientNumber} does not match the expected format 00[country][number_without_leading_0]");
-                            else return MessageSendResult.InvalidNumberFormat;
-                        }
-
-                        else res = MessageSendResult.SessionExpired;
-
-                        m.NotifySendingAttempt(res);
-                        if (res == MessageSendResult.Ok) _counter.Success();
-                        else _counter.Fail();
-                        return res;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                if (e is InvalidOperationException || e is HttpRequestException || e is TaskCanceledException)
-                {
-                    Log("Error: " + e.Message);
-                    m.NotifySendingAttempt(MessageSendResult.OtherError);
-                    return MessageSendResult.OtherError;
-                }
-
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Sends messages with automatic reconnection enabled.
-        /// If message sending fails once due to expired session, the sending process is retried once.
-        /// </summary>
-        /// <param name="m"></param>
-        /// <returns></returns>
-        private async Task<MessageSendResult> SendMessageWithReconnect(Message m)
-        {
-            if (!Connected) await Reconnect();
-            Log($"Sending SMS to {m.RecipientNumber}");
-            var res = await CallMessageSendingEndpoint(m);
-            if (res == MessageSendResult.SessionExpired)
-            {
-                Log("Kontomanager connection expired.");
+            if (!Connected)
                 await Reconnect();
-                Log("Resending...");
-                return await CallMessageSendingEndpoint(m);
+            
+            HttpResponseMessage response = await _httpClient.GetAsync(AccountUsagePath);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException("Could not get account usage");
+            var responseHtml = await response.Content.ReadAsStringAsync();
+            var doc = new HtmlDocument();
+            doc.LoadHtml(responseHtml);
+
+            var result = new AccountUsage();
+
+            IEnumerable<PackageUsage> ParseBasePageSections()
+            {
+                var res = new List<PackageUsage>();
+                var contentAreas = doc.DocumentNode.SelectNodes("//div[@class='card']");
+                foreach (var section in contentAreas)
+                {
+                    var pu = new PackageUsage();
+                    var heading = section.SelectSingleNode(".//h1");
+                    if (heading != null)
+                    {
+                        pu.PackageName = HttpUtility.HtmlDecode(heading.InnerText.TrimEnd(':'));
+                    }
+
+                    var progressItems = section.SelectNodes(".//div[@class='progress-item']");
+                    if (progressItems != null)
+                    {
+                        foreach (var progressItem in progressItems)
+                        {
+                            var progressHeading = progressItem.SelectSingleNode(".//div[@class='progress-heading']");
+                            var available = progressItem.SelectSingleNode(".//div[@class='bar-label-left']");
+                            var used = progressItem.SelectSingleNode(".//div[@class='bar-label-right']");
+
+                            if (progressHeading == null) continue;
+                            var headingLowered = progressHeading.InnerText.ToLower();
+                            if (headingLowered.Contains("daten"))
+                            {
+                                UnitQuota q = headingLowered.Contains("eu") ? pu.DataEu : pu.Data;
+                                if (used != null)
+                                {
+                                    var match = Regex.Match(used.InnerText, @"Verbraucht: (\d*) \(von (\S*)");
+                                    var totText = match.Groups[2].Value;
+                                    q.Total = totText.ToLower() == "unlimited"
+                                        ? int.MaxValue
+                                        : int.Parse(totText);
+                                    q.Used = int.Parse(match.Groups[1].Value);
+                                }
+                            }
+                            else if (headingLowered.Contains("minuten") && !headingLowered.Contains("eu"))
+                            {
+                                if (headingLowered.Contains("sms"))
+                                    pu.MinutesAndSmsQuotasShared = true;
+                                if (used != null)
+                                {
+                                    var match = Regex.Match(used.InnerText, @"Verbraucht: (\d*) \(von (\S*)");
+                                    var totText = match.Groups[2].Value;
+                                    pu.Minutes.Total = totText.ToLower() == "unlimited"
+                                        ? 10000
+                                        : int.Parse(totText);
+                                    pu.Minutes.Used = int.Parse(match.Groups[1].Value);
+                                }
+
+                                if (pu.MinutesAndSmsQuotasShared)
+                                {
+                                    pu.Sms = pu.Minutes;
+                                }
+                            }
+                            else if (headingLowered.Contains("sms") && !headingLowered.Contains("minuten") &&
+                                     !headingLowered.Contains("kostenwarnung"))
+                            {
+                                if (used != null)
+                                {
+                                    var match = Regex.Match(used.InnerText, @"Verbraucht: (\d*) \(von (\S*)");
+                                    var totText = match.Groups[2].Value;
+                                    pu.Sms.Total = totText.ToLower() == "unlimited"
+                                        ? 10000
+                                        : int.Parse(totText);
+                                    pu.Sms.Used = int.Parse(match.Groups[1].Value);
+                                }
+                            }
+                            else if (headingLowered.Contains("ö") && headingLowered.Contains("eu") &&
+                                     headingLowered.Contains("minuten"))
+                            {
+                                if (used != null)
+                                {
+                                    var match = Regex.Match(used.InnerText, @"Verbraucht: (\d*) \(von (\S*)");
+                                    var totText = match.Groups[2].Value;
+                                    pu.AustriaToEuMinutes.Total = totText.ToLower() == "unlimited"
+                                        ? 10000
+                                        : int.Parse(totText);
+                                    pu.AustriaToEuMinutes.Used = int.Parse(match.Groups[1].Value);
+                                }
+                            }
+                        }
+                    }
+
+                    var infoTable = section.SelectSingleNode(".//ul[@class='list-group list-group-flush']");
+                    if (infoTable != null)
+                    {
+                        var infoItems = section.SelectNodes(".//li[@class='list-group-item']");
+                        if (infoItems != null)
+                        {
+                            foreach (var item in infoItems.Where(i => i.InnerText.Contains(":")))
+                            {
+                                var infoTitle =
+                                    HttpUtility.HtmlDecode(item.InnerText.Split(':').First());
+                                var lowerTitle = infoTitle.ToLower();
+                                var infoValue = HttpUtility.HtmlDecode(item.InnerText.Split(new []{':'}, 2)[1].Trim());
+                                if (lowerTitle.Contains("datenvolumen") && lowerTitle.Contains("eu"))
+                                {
+                                    try
+                                    {
+                                        var match = Regex.Match(infoValue, @"(\d*) MB von (\d*) MB");
+                                        pu.DataEu.Total =
+                                            int.Parse(match.Groups[2].Value);
+                                        pu.DataEu.CorrectRemainingFree(int.Parse(match.Groups[1].Value));
+                                    }
+                                    catch { }
+                                }
+                                else if (lowerTitle.Contains("gültigkeit") && lowerTitle.Contains("sim"))
+                                {
+                                    result.Prepaid = true;
+                                    result.SimCardValidUntil =
+                                        DateTime.ParseExact(infoValue, "dd.MM.yyyy",
+                                            null);
+                                }
+                                else if (lowerTitle.Contains("letzte aufladung"))
+                                {
+                                    result.LastRecharge = DateTime.ParseExact(infoValue,
+                                        "dd.MM.yyyy", null);
+                                }
+                                else if (lowerTitle.Contains("guthaben"))
+                                {
+                                    result.Credit =
+                                        decimal.Parse(
+                                            item.ChildNodes[1].ChildNodes[0].InnerText.Split(' ')[1]
+                                                .Replace(',', '.'));
+                                }
+                                else if (lowerTitle.Contains("gültig von") ||
+                                         lowerTitle.Contains("aktivierung des paket"))
+                                {
+                                    pu.UnitsValidFrom = DateTime.ParseExact(infoValue,
+                                        "dd.MM.yyyy HH:mm", null);
+                                }
+                                else if (lowerTitle.Contains("gültig bis") ||
+                                         lowerTitle.Contains("gültigkeit des paket"))
+                                {
+                                    pu.UnitsValidUntil = DateTime.ParseExact(infoValue,
+                                        "dd.MM.yyyy HH:mm", null);
+                                }
+                                else
+                                {
+                                    pu.AdditionalInformation[infoTitle] =
+                                        HttpUtility.HtmlDecode(infoValue);
+                                }
+                            }
+                        }
+                    }
+
+                    if (!_excludedSections.Contains(pu.PackageName))
+                        res.Add(pu);
+                }
+
+
+                // TODO: Aktuelle Kosten section auf neues UI updaten
+                var dataItemListTable = doc.DocumentNode.SelectSingleNode("//table[@class='data-item-list']");
+                if (dataItemListTable != null)
+                {
+                    var trs = dataItemListTable.SelectNodes(".//tr");
+                    if (trs != null)
+                    {
+                        foreach (var tr in trs)
+                        {
+                            var tds = tr.SelectNodes(".//td");
+                            if (tds.Count != 2) continue;
+                            var lowerTitle = tds[0].InnerText.ToLower();
+                            if (lowerTitle.Contains("rechnungsdatum"))
+                            {
+                                result.InvoiceDate = DateTime.ParseExact(tds[1].InnerText, "dd.MM.yyyy", null);
+                            }
+                            else if (lowerTitle.Contains("vorläufige kosten"))
+                            {
+                                result.Cost = decimal.Parse(tds[1].InnerText.Split(' ')[1].Replace(',', '.'));
+                            }
+                        }
+                    }
+                }
+
+
+                return res;
             }
 
-            // else return true if message sent.
-            return res;
+            var sections = ParseBasePageSections();
+            result.Number = await GetSelectedPhoneNumber();
+            result.PackageUsages = sections.ToList();
+            return result;
+            // TODO: parse base page
         }
 
         /// <summary>
@@ -616,42 +479,27 @@ namespace KontomanagerClient
             return this;
         }
 
-
-        /// <summary>
-        /// Obtains the hidden input "token" from the HTML form needed to send a message.
-        /// </summary>
-        /// <returns></returns>
-        private async Task<string> GetToken()
-        {
-            try
-            {
-                using (HttpClientHandler handler = new HttpClientHandler())
-                {
-                    handler.CookieContainer = _cookieContainer;
-                    using (var client = new HttpClient(handler))
-                    {
-                        HttpResponseMessage response = await client.GetAsync(SendUri);
-                        var responseHTML = await response.Content.ReadAsStringAsync();
-                        var regex = new Regex(".*<input type=\"hidden\" name=\"token\" value=\"([^\"]*)\">");
-                        var match = regex.Match(responseHTML);
-                        return match.Groups[1].Value;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log("Error: " + e.Message);
-                return string.Empty;
-            }
-        }
-
         /// <summary>
         /// Initializes a session by calling the login endpoint.
         /// </summary>
         /// <returns></returns>
         public async Task<bool> CreateConnection()
         {
+            await AcceptCookies();
             return await CreateConnection(_user, _password);
+        }
+
+        private async Task AcceptCookies()
+        {
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("dosave", "1"),
+                new KeyValuePair<string, string>("accept-all", "1")
+            });
+
+            HttpResponseMessage response =
+                await _httpClient.PostAsync("einstellungen_datenschutz_web.php", content);
+            Console.WriteLine(response.ToString());
         }
 
         /// <summary>
@@ -662,33 +510,29 @@ namespace KontomanagerClient
         /// <returns></returns>
         private async Task<bool> CreateConnection(string user, string password)
         {
-            HttpClientHandler handler = new HttpClientHandler();
-            _cookieContainer = new CookieContainer();
-            handler.CookieContainer = _cookieContainer;
-            using (var client = new HttpClient(handler))
+            var content = new FormUrlEncodedContent(new[]
             {
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("login_rufnummer", user),
-                    new KeyValuePair<string, string>("login_passwort", password)
-                });
+                new KeyValuePair<string, string>("login_rufnummer", user),
+                new KeyValuePair<string, string>("login_passwort", password)
+            });
 
-                HttpResponseMessage response = await client.PostAsync(LoginUri, content);
-                IEnumerable<Cookie> responseCookies = _cookieContainer.GetCookies(LoginUri).Cast<Cookie>();
-                foreach (Cookie cookie in responseCookies)
-                    Log(cookie.Name + ": " + cookie.Value);
-                string responseHTML = await response.Content.ReadAsStringAsync();
-                var doc = new HtmlDocument();
-                doc.LoadHtml(responseHTML);
-                var success = doc.DocumentNode.SelectSingleNode("//form[@name='loginform']") == null;
-                if (success)
-                {
-                    _lastConnected = DateTime.Now;
-                    ConnectionEstablished?.Invoke(this, EventArgs.Empty);
-                    return true;
-                }
-                return false;
+            HttpResponseMessage response = await _httpClient.PostAsync(LoginPath, content);
+            IEnumerable<Cookie> responseCookies =
+                _cookieContainer.GetCookies(new Uri(BaseUri, LoginPath)).Cast<Cookie>();
+            foreach (Cookie cookie in responseCookies)
+                Log(cookie.Name + ": " + cookie.Value);
+            string responseHTML = await response.Content.ReadAsStringAsync();
+            var doc = new HtmlDocument();
+            doc.LoadHtml(responseHTML);
+            var success = doc.DocumentNode.SelectSingleNode("//form[@name='loginform']") == null;
+            if (success)
+            {
+                _lastConnected = DateTime.Now;
+                ConnectionEstablished?.Invoke(this, EventArgs.Empty);
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>
@@ -698,6 +542,7 @@ namespace KontomanagerClient
         private async Task<bool> Reconnect()
         {
             Log("Reconnecting...");
+            await AcceptCookies();
             return await CreateConnection(_user, _password);
         }
 
@@ -713,7 +558,8 @@ namespace KontomanagerClient
 
         public void Dispose()
         {
-            Messages?.Dispose();
+            _httpClient.Dispose();
+            _httpClientHandler.Dispose();
         }
     }
 }

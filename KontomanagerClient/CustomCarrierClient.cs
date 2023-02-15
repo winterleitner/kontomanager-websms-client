@@ -8,8 +8,8 @@ namespace KontomanagerClient
     /// </summary>
     public class CustomCarrierClient : KontomanagerClient
     {
-        public CustomCarrierClient(string username, string password, string baseUri, string loginUri, string sendUri)
-        : base(username, password, new Uri(baseUri), new Uri(loginUri), new Uri(sendUri))
+        public CustomCarrierClient(string username, string password, string baseUri)
+        : base(username, password, new Uri(baseUri))
         {
             
         }

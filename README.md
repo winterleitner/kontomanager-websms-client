@@ -1,5 +1,5 @@
-# Kontomanager Websms Client .NET
-.NET Client library that wraps the WebSMS functionality provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
+# Kontomanager Client .NET
+.NET Client library that wraps the functionalities provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
 
 # UPDATE 02/2023
 The Kontomanager Web interface has had a major design overhaul. Unfortunately, the WebSMS functionality was removed in the process.

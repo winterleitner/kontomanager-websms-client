@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+
+## [2.0.1] -  2023-02-16
+- bug fixes
+
+## [2.0.0] - 2023-02-15
+This is a breaking change. Some methods were removed and the constructor was refactored to only require one URL.
+- remove no longer supported WebSMS functionality
+- add support for new Kontomanager UI
+
 ## [1.2.7] - 2022-06-07
 - added a function to extract the selected phone number from the header
 

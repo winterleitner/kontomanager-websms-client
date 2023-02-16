@@ -70,6 +70,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 15.02.2023 2.0.1
+- bug fixes
+
 ### 15.02.2023 2.0.0
 This is a breaking change. Some methods were removed and the constructor was refactored to only require one URL.
 - remove no longer supported WebSMS functionality

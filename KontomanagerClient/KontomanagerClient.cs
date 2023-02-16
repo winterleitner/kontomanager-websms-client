@@ -293,6 +293,27 @@ namespace KontomanagerClient
                         pu.PackageName = HttpUtility.HtmlDecode(heading.InnerText.TrimEnd(':'));
                     }
 
+                    if (pu.PackageName == "Aktuelle Kosten")
+                    {
+                        var entries = section.SelectNodes(".//div[@class='row']");
+                        foreach (var entry in entries)
+                        {
+                            var sides = entry.SelectNodes("./div");
+                            if (sides.Count != 2) continue;
+                            var title = sides[0].InnerText.TrimEnd(':').Trim();
+                            switch (title)
+                            {
+                                case "Vorläufige Kosten": 
+                                    result.Cost = decimal.Parse(Regex.Match(sides[1].InnerText, @"EUR (\d*,?\d*)").Groups[1].Value);
+                                    break;
+                                case "Vorläufiges Rechnungsdatum":
+                                    result.InvoiceDate = DateTime.Parse(sides[1].InnerText);
+                                    break;
+                            }
+                        }
+                        continue;
+                    }
+
                     var progressItems = section.SelectNodes(".//div[@class='progress-item']");
                     if (progressItems != null)
                     {
@@ -402,10 +423,11 @@ namespace KontomanagerClient
                                 }
                                 else if (lowerTitle.Contains("guthaben"))
                                 {
-                                    result.Credit =
-                                        decimal.Parse(
-                                            item.ChildNodes[1].ChildNodes[0].InnerText.Split(' ')[1]
-                                                .Replace(',', '.'));
+                                    var m = Regex.Match(item.InnerText, @"guthaben: EUR (\d*,?\d*)");
+                                    if (m.Groups.Count == 2)
+                                    {
+                                        result.Credit = decimal.Parse(m.Groups[1].Value);
+                                    }
                                 }
                                 else if (lowerTitle.Contains("gültig von") ||
                                          lowerTitle.Contains("aktivierung des paket"))
@@ -431,32 +453,6 @@ namespace KontomanagerClient
                     if (!_excludedSections.Contains(pu.PackageName))
                         res.Add(pu);
                 }
-
-
-                // TODO: Aktuelle Kosten section auf neues UI updaten
-                var dataItemListTable = doc.DocumentNode.SelectSingleNode("//table[@class='data-item-list']");
-                if (dataItemListTable != null)
-                {
-                    var trs = dataItemListTable.SelectNodes(".//tr");
-                    if (trs != null)
-                    {
-                        foreach (var tr in trs)
-                        {
-                            var tds = tr.SelectNodes(".//td");
-                            if (tds.Count != 2) continue;
-                            var lowerTitle = tds[0].InnerText.ToLower();
-                            if (lowerTitle.Contains("rechnungsdatum"))
-                            {
-                                result.InvoiceDate = DateTime.ParseExact(tds[1].InnerText, "dd.MM.yyyy", null);
-                            }
-                            else if (lowerTitle.Contains("vorläufige kosten"))
-                            {
-                                result.Cost = decimal.Parse(tds[1].InnerText.Split(' ')[1].Replace(',', '.'));
-                            }
-                        }
-                    }
-                }
-
 
                 return res;
             }

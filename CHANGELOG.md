@@ -2,7 +2,10 @@
 All notable changes to this project will be documented in this file.
 
 
-## [2.0.1] -  2023-02-16
+## [2.0.2] - 2023-02-20
+- bug fixes
+
+## [2.0.1] - 2023-02-16
 - bug fixes
 
 ## [2.0.0] - 2023-02-15

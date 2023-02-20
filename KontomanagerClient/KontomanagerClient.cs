@@ -307,7 +307,8 @@ namespace KontomanagerClient
                                     result.Cost = decimal.Parse(Regex.Match(sides[1].InnerText, @"EUR (\d*,?\d*)").Groups[1].Value);
                                     break;
                                 case "Vorläufiges Rechnungsdatum":
-                                    result.InvoiceDate = DateTime.Parse(sides[1].InnerText);
+                                    result.InvoiceDate = DateTime.ParseExact(sides[1].InnerText,
+                                        "dd.MM.yyyy", null);
                                     break;
                             }
                         }

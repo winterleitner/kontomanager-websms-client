@@ -70,7 +70,10 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
-### 15.02.2023 2.0.1
+### 20.02.2023 2.0.2
+- bug fixes
+- 
+### 16.02.2023 2.0.1
 - bug fixes
 
 ### 15.02.2023 2.0.0

@@ -10,7 +10,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
         <TargetFrameworks>net5.0;net6.0;net7.0;netcoreapp3.1;netstandard2.0</TargetFrameworks>
-        <PackageVersion>2.0.1</PackageVersion>
+        <PackageVersion>2.0.2</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>

@@ -70,6 +70,12 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 28.02.2023 2.0.4
+- fix bug that caused prepaid credit to be read incorrectly if system culture was not german
+
+### 20.02.2023 2.0.3
+- includes fix intended for 2.0.2
+ 
 ### 20.02.2023 2.0.2
 - bug fixes
 - 

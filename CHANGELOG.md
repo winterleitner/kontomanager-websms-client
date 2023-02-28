@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.0.4] - 2023-02-28
+- fix bug that caused prepaid credit to be read incorrectly if system culture was not german
+
+## [2.0.3] - 2023-02-20
+- includes fix intended for 2.0.2
+
 ## [2.0.2] - 2023-02-20
 - bug fixes
 

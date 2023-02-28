@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -304,7 +305,7 @@ namespace KontomanagerClient
                             switch (title)
                             {
                                 case "Vorläufige Kosten": 
-                                    result.Cost = decimal.Parse(Regex.Match(sides[1].InnerText, @"EUR (\d*,?\d*)").Groups[1].Value);
+                                    result.Cost = decimal.Parse(Regex.Match(sides[1].InnerText, @"EUR (\d*,?\d*)").Groups[1].Value, NumberStyles.Any, new CultureInfo("de-DE"));
                                     break;
                                 case "Vorläufiges Rechnungsdatum":
                                     result.InvoiceDate = DateTime.ParseExact(sides[1].InnerText,
@@ -427,7 +428,7 @@ namespace KontomanagerClient
                                     var m = Regex.Match(item.InnerText, @"guthaben: EUR (\d*,?\d*)");
                                     if (m.Groups.Count == 2)
                                     {
-                                        result.Credit = decimal.Parse(m.Groups[1].Value);
+                                        result.Credit = decimal.Parse(m.Groups[1].Value, NumberStyles.Any, new CultureInfo("de-DE"));
                                     }
                                 }
                                 else if (lowerTitle.Contains("gültig von") ||
@@ -496,7 +497,6 @@ namespace KontomanagerClient
 
             HttpResponseMessage response =
                 await _httpClient.PostAsync("einstellungen_datenschutz_web.php", content);
-            Console.WriteLine(response.ToString());
         }
 
         /// <summary>

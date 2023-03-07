@@ -55,6 +55,12 @@ namespace KontomanagerClient
         public string SettingsPath { get; set; } = "einstellungen_profil.php";
         public string AccountUsagePath { get; set; } = "kundendaten.php";
 
+        /// <summary>
+        /// The subscriber id of the main number of a group is not present in the dropdown.
+        /// Enable to preload it on login. This descreases performance, but avoids exceptions.
+        /// </summary>
+        public bool EnableSubscriberIdPreload { get; set; } = true;
+
         private DateTime _lastConnected = DateTime.MinValue;
 
 
@@ -185,7 +191,7 @@ namespace KontomanagerClient
 
             return res;
         }
-        private IEnumerable<PhoneNumber> ExtractSelectablePhoneNumbersFromDropdown(string homePageHtml)
+        private IEnumerable<PhoneNumber> ExtractSelectablePhoneNumbersFromDropdown(string homePageHtml, bool skipSelected = false)
         {
             var res = new List<PhoneNumber>();
             var doc = new HtmlDocument();
@@ -194,15 +200,20 @@ namespace KontomanagerClient
             var dd = doc.DocumentNode.SelectSingleNode("//ul[@aria-labelledby='user-dropdown']");
             if (dd is null) return res;
 
-            // Selected Number
-            var sn = dd.ChildNodes.FirstOrDefault(n => n.InnerText.ToLower().Contains("aktuell gewählte rufnummer"));
-            if (sn != null && GetNextActualSibling(sn) != null)
+            if (!skipSelected)
             {
-                res.Add(ExtractPhoneNumberFromDropdown(GetNextActualSibling(sn)));
+                // Selected Number
+                var sn = dd.ChildNodes.FirstOrDefault(n =>
+                    n.InnerText.ToLower().Contains("aktuell gewählte rufnummer"));
+                if (sn != null && GetNextActualSibling(sn) != null)
+                {
+                    res.Add(ExtractPhoneNumberFromDropdown(GetNextActualSibling(sn)));
+                }
             }
+
             //other numbers
             var an = dd.ChildNodes.FirstOrDefault(n => n.InnerText.ToLower().Contains("rufnummer wechseln"));
-            if (an is null) return null;
+            if (an is null) return res;
             while (GetNextActualSibling(an) != null)
             {
                 an = GetNextActualSibling(an);
@@ -216,8 +227,9 @@ namespace KontomanagerClient
         /// Returns a list of all phone numbers linked to the account.
         /// If the account is a single-sim account without a group, an empty list is returned.
         /// </summary>
+        /// <param name="skipCurrentlySelected">Excludes the currently selected number from the result</param>
         /// <returns></returns>
-        public async Task<IEnumerable<PhoneNumber>> GetSelectablePhoneNumbers()
+        public async Task<IEnumerable<PhoneNumber>> GetSelectablePhoneNumbers(bool skipCurrentlySelected = false)
         {
             if (!Connected)
                 await Reconnect();
@@ -225,7 +237,7 @@ namespace KontomanagerClient
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException("Could not determine the selectable phone numbers");
             var responseHtml = await response.Content.ReadAsStringAsync();
-            return ExtractSelectablePhoneNumbersFromDropdown(responseHtml);
+            return ExtractSelectablePhoneNumbersFromDropdown(responseHtml, skipCurrentlySelected);
         }
 
         /// <summary>
@@ -233,8 +245,11 @@ namespace KontomanagerClient
         /// </summary>
         public async Task SelectPhoneNumber(PhoneNumber number)
         {
-            if (number == null || number.SubscriberId == null)
+            if (number.SubscriberId == null && (number.Number == null || !_numberToSubscriberId.ContainsKey(number.Number)))
                 throw new Exception("No subscriber id provided!");
+
+            if (number.SubscriberId is null)
+                number.SubscriberId = _numberToSubscriberId[number.Number];
             
             var content = new FormUrlEncodedContent(new[]
             {
@@ -484,7 +499,26 @@ namespace KontomanagerClient
         public async Task<bool> CreateConnection()
         {
             await AcceptCookies();
-            return await CreateConnection(_user, _password);
+            var loginSuccess = await CreateConnection(_user, _password);
+            if (EnableSubscriberIdPreload)
+                await PreloadLinkedSubscriberIds();
+            return loginSuccess;
+        }
+        
+        /// <summary>
+        /// This method preloads the selectable phone numbers since the account id is missing for the initial account else.
+        /// </summary>
+        private async Task PreloadLinkedSubscriberIds()
+        {
+            var current = await GetSelectedPhoneNumber();
+            var all = await GetSelectablePhoneNumbers();
+            if (all.Any(n => n.Number != current))
+            {
+                await SelectPhoneNumber(all.First(n => n.Number != current));
+                var updated = await GetSelectablePhoneNumbers();
+                await SelectPhoneNumber(updated.First(n => n.Number == current));
+            }
+
         }
 
         private async Task AcceptCookies()

@@ -8,13 +8,18 @@
         <Copyright>Copyright (c) Felix Winterleitner 2023</Copyright>
         <RepositoryUrl>https://github.com/winterleitner/kontomanager-websms-client</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <TargetFrameworks>net5.0;net6.0;net7.0;netcoreapp3.1;netstandard2.0</TargetFrameworks>
-        <PackageVersion>2.0.5</PackageVersion>
+        <PackageVersion>2.0.6</PackageVersion>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>

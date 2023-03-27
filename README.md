@@ -70,6 +70,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 27.03.2023 2.0.6
+- fix bug that parsed the remaining EU data incorrectly
+
 ### 07.03.2023 2.0.5
 - fix bug that returned null instead of an empty list for selectable phone numbers
 

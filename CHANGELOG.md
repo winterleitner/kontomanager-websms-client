@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.0.6] - 2023-03-27
+- fix bug that parsed the remaining EU data incorrectly
+
 ## [2.0.5] - 2023-03-07
 - fix bug that returned null instead of an empty list for selectable phone numbers
 

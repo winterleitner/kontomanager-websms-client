@@ -4,6 +4,10 @@
     &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.Test1&lt;/TestId&gt;
     &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestSubscriberIdsWithPreload&lt;/TestId&gt;
     &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestSubscriberIdsWithoutPreload&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestUnrealisticCredit&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestRemainingUnitsSmallerThanTotal&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestRemainingDataUnitsSmallerThanTotal&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::AD1BEAB0-0431-4154-B58C-5CCBF427ABEF::net7.0::BlitzkabineTests.TestAccounts.TestRemainingDataEuUnitsSmallerThanTotal&lt;/TestId&gt;
   &lt;/TestAncestor&gt;
 &lt;/SessionState&gt;</s:String>
 	

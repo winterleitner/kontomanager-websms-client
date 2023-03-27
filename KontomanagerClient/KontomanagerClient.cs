@@ -419,10 +419,11 @@ namespace KontomanagerClient
                                 {
                                     try
                                     {
-                                        var match = Regex.Match(infoValue, @"(\d*) MB von (\d*) MB");
+                                        var match = Regex.Match(infoValue, @"(\d|.*) MB von (\d*) MB");
                                         pu.DataEu.Total =
                                             int.Parse(match.Groups[2].Value);
-                                        pu.DataEu.CorrectRemainingFree(int.Parse(match.Groups[1].Value));
+                                        pu.DataEu.CorrectRemainingFree((int)Math.Round(decimal.Parse(match.Groups[1].Value, NumberStyles.Any,
+                                            new CultureInfo("en-EN"))));
                                     }
                                     catch { }
                                 }

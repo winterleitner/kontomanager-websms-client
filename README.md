@@ -1,7 +1,7 @@
 # Kontomanager Client .NET
 .NET Client library that wraps the functionalities provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
 
-# UPDATE 02/2023
+#### UPDATE 02/2023
 The Kontomanager Web interface has had a major design overhaul. Unfortunately, the WebSMS functionality was removed in the process.
 v1.x is no longer working for at least XOXO and YESSS as of 15.02.2023.
 
@@ -69,6 +69,10 @@ The following projects seem to do the same thing as this client in other languag
 - Python Client [https://git.flo.cx/flowolf/yessssms](https://git.flo.cx/flowolf/yessssms)
 
 # Changelog
+
+### 03.04.2024 2.1.0
+- add `ICarrierAccount` interface to introduce a common interface for all carriers
+- add support for non-kontomanager MeinA1 accounts
 
 ### 27.03.2023 2.0.6
 - fix bug that parsed the remaining EU data incorrectly

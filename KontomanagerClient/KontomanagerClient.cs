@@ -1,27 +1,20 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Web;
 using HtmlAgilityPack;
-using KontomanagerClient.Exceptions;
-using KontomanagerClient.Model;
 
 namespace KontomanagerClient
 {
     /// <summary>
     /// Sms Client for Sim Cards from providers using kontomanager.at
     /// </summary>
-    public abstract class KontomanagerClient : IDisposable
+    public abstract class KontomanagerClient : IDisposable, ICarrierAccount
     {
         #region Parameters
 
@@ -480,6 +473,12 @@ namespace KontomanagerClient
             result.PackageUsages = sections.ToList();
             return result;
             // TODO: parse base page
+        }
+
+        public async Task<AccountUsage> GetAccountUsage(PhoneNumber number)
+        {
+            await SelectPhoneNumber(number);
+            return await GetAccountUsage();
         }
 
         /// <summary>

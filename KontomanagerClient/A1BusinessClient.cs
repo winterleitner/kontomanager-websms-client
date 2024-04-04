@@ -256,12 +256,18 @@ namespace KontomanagerClient
 
                             var circle = package.SelectSingleNode(".//div[contains(@class, 'circle100')]");
                             var usageSpan = circle.SelectSingleNode(".//span");
-                            uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim()));
+                            if (uq.Name.Contains("Daten"))
+                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim()) * 1024); //convert to MB
+                            else 
+                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim()));
                             var regex = new Regex(@"\/(\d+)(\\n)?\s+([a-zA-Z]+)");
                             if (regex.IsMatch(usageSpan.InnerHtml))
                             {
                                 var match = regex.Match(usageSpan.InnerHtml);
-                                uq.Total = int.Parse(match.Groups[1].Value);
+                                if (uq.Name.Contains("Daten"))
+                                    uq.Total = int.Parse(match.Groups[1].Value) * 1024;
+                                else
+                                    uq.Total = int.Parse(match.Groups[1].Value);
                                 //var unit = match.Groups[3].Value;
                             }
                             else if (usageSpan.InnerText.Contains("unlimitiert"))

@@ -84,6 +84,10 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 04.04.2024 2.1.3
+- add more information to `A1BusinessClient`, such as contract validity periods, loyalty points and customer number.
+- fix bugs found in versions 2.1.0 - 2.1.2
+
 ### 03.04.2024 2.1.0
 - add `ICarrierAccount` interface to introduce a common interface for all carriers
 - add support for non-kontomanager MeinA1 accounts via the `A1BusinessClient`

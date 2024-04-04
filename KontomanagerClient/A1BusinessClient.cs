@@ -116,7 +116,7 @@ namespace KontomanagerClient
         public Task<AccountUsage> GetAccountUsage()
         {
             if (_selectedPhoneNumber is null)
-                throw new Exception("No phone number selected");
+                throw new InvalidOperationException("No phone number selected");
             return GetAccountUsage(_selectedPhoneNumber);
         }
 

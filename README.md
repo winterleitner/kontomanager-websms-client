@@ -1,7 +1,8 @@
 # Kontomanager Client .NET
 .NET Client library that wraps the functionalities provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
+Starting with version 2.1.0, the library also supports A1 accounts, which do not have a Kontomanager interface, but use a different system.
 
-# UPDATE 02/2023
+#### UPDATE 02/2023
 The Kontomanager Web interface has had a major design overhaul. Unfortunately, the WebSMS functionality was removed in the process.
 v1.x is no longer working for at least XOXO and YESSS as of 15.02.2023.
 
@@ -16,6 +17,7 @@ The library was testet for:
 - [XOXO](https://www.xoxo-mobile.at) @ [xoxo.kontomanager.at](https://xoxo.kontomanager.at)
 - [Yesss](https://www.yesss.at) @ [www.yesss.at/kontomanager.at/](https://www.yesss.at/kontomanager.at/)
 - [~~Educom~~](https://www.educom.at) @ [~~educom.kontomanager.at~~](https://educom.kontomanager.at) | Educom was rebranded to XOXO
+- **[A1 Business](https://www.a1.net/mein-a1)**
 
 Other carriers that use Kontomanager but were not tested include:
 - [Georg](https://georg.at) @ [kundencenter.georg.at](https://kundencenter.georg.at)
@@ -36,6 +38,18 @@ var client = new XOXOClient("<login_username/number>", "<login_password>")
 await client.CreateConnection();
 
 var usage = await client.GetAccountUsage();
+usage.PrintToConsole();
+```
+
+### 2.1.0 Additions
+#### A1 Business
+Some extra units, such as USA minutes, are included in the `AdditionalQuotas` dictionary of `PackageUsage`.
+The key is the string used in the MeinA1 interface to describe the unit.
+```c#
+var client = new A1BusinessClient("<login_username/email>", "<login_password>");
+await client.CreateConnection();
+var numbers = await client.GetSelectablePhoneNumbers();
+var usage = await client.GetAccountUsage(numbers.First());
 usage.PrintToConsole();
 ```
 
@@ -69,6 +83,10 @@ The following projects seem to do the same thing as this client in other languag
 - Python Client [https://git.flo.cx/flowolf/yessssms](https://git.flo.cx/flowolf/yessssms)
 
 # Changelog
+
+### 03.04.2024 2.1.0
+- add `ICarrierAccount` interface to introduce a common interface for all carriers
+- add support for non-kontomanager MeinA1 accounts via the `A1BusinessClient`
 
 ### 27.03.2023 2.0.6
 - fix bug that parsed the remaining EU data incorrectly

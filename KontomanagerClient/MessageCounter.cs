@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace KontomanagerClient
 {
+    [Obsolete("This class is not used anymore and will be removed in the future.")]
     public class MessageCounter
     {
         private int _timeout;

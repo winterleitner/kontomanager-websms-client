@@ -52,18 +52,23 @@ namespace KontomanagerClient
                 new KeyValuePair<string, string>("wrongLoginType", "false"),
                 new KeyValuePair<string, string>("userRequestURL", "https://www.a1.net/mein-a1"),
                 new KeyValuePair<string, string>("SetMsisdn", "false"),
-                new KeyValuePair<string, string>("u3", "u3"),
+                new KeyValuePair<string, string>("u3", "u3")
             });
 
             _ = await _httpClient.GetAsync("https://ppp.a1.net/start/index.sp?execution=e1s1");
 
-            HttpResponseMessage response = await _httpClient.PostAsync(
+            var response = await _httpClient.PostAsync(
                 "https://asmp.a1.net/asmp/ProcessLoginServlet/lvpaaa4/lvpbbgw3?aaacookie=lvpaaa4&eacookie=lvpbbgw3",
                 content);
 
-            string responseHTML = await response.Content.ReadAsStringAsync();
+            var responseText = await response.Content.ReadAsStringAsync();
             var doc = new HtmlDocument();
-            doc.LoadHtml(responseHTML);
+            doc.LoadHtml(responseText);
+            var logoutElement = doc.DocumentNode.SelectSingleNode("//a[@title='Logout']");
+            if (logoutElement is null)
+            {
+                return false;
+            }
             _lastConnected = DateTime.Now;
             ConnectionEstablished?.Invoke(this, EventArgs.Empty);
             return true;

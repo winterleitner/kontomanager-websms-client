@@ -1,5 +1,6 @@
 # Kontomanager Client .NET
 .NET Client library that wraps the functionalities provided by the kontomanager.at web management interface used by a number of mobile carriers in Austria (MVNOs in the A1 network).
+Starting with version 2.1.0, the library also supports A1 accounts, which do not have a Kontomanager interface, but use a different system.
 
 #### UPDATE 02/2023
 The Kontomanager Web interface has had a major design overhaul. Unfortunately, the WebSMS functionality was removed in the process.
@@ -16,6 +17,7 @@ The library was testet for:
 - [XOXO](https://www.xoxo-mobile.at) @ [xoxo.kontomanager.at](https://xoxo.kontomanager.at)
 - [Yesss](https://www.yesss.at) @ [www.yesss.at/kontomanager.at/](https://www.yesss.at/kontomanager.at/)
 - [~~Educom~~](https://www.educom.at) @ [~~educom.kontomanager.at~~](https://educom.kontomanager.at) | Educom was rebranded to XOXO
+- **[A1 Business](https://www.a1.net/mein-a1)**
 
 Other carriers that use Kontomanager but were not tested include:
 - [Georg](https://georg.at) @ [kundencenter.georg.at](https://kundencenter.georg.at)

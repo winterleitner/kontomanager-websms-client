@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -271,7 +272,7 @@ namespace KontomanagerClient
                 if (before != null && after != null)
                 {
                     usage.Cost = int.Parse(before.InnerText.Trim().Trim(',')) +
-                                 decimal.Parse(after.InnerText.Trim().Trim(',')) / 100;
+                                 decimal.Parse(after.InnerText.Trim().Trim(','), new CultureInfo("de-DE")) / 100;
                 }
             }
 
@@ -312,9 +313,9 @@ namespace KontomanagerClient
                             var circle = package.SelectSingleNode(".//div[contains(@class, 'circle100')]");
                             var usageSpan = circle.SelectSingleNode(".//span");
                             if (uq.Name.Contains("Daten"))
-                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim()) * 1024); //convert to MB
+                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim(), new CultureInfo("de-DE")) * 1024); //convert to MB
                             else 
-                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim()));
+                                uq.Used = (int)Math.Round(decimal.Parse(usageSpan.FirstChild.InnerText.Trim(), new CultureInfo("de-DE")));
                             var regex = new Regex(@"\/(\d+)(\\n)?\s+([a-zA-Z]+)");
                             if (regex.IsMatch(usageSpan.InnerHtml))
                             {

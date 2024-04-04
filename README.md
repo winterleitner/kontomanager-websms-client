@@ -84,6 +84,9 @@ The following projects seem to do the same thing as this client in other languag
 
 # Changelog
 
+### 04.04.2024 2.1.4
+- set culture for parsing numbers to de-DE. This fixes the problem where used data was read incorrectly if the system locale is not de-DE.
+
 ### 04.04.2024 2.1.3
 - add more information to `A1BusinessClient`, such as contract validity periods, loyalty points and customer number.
 - fix bugs found in versions 2.1.0 - 2.1.2

@@ -257,6 +257,12 @@ namespace KontomanagerClient
                 pu.PackageName = contractName;
             }
 
+            var pointsContainer = doc.DocumentNode.SelectSingleNode("//div[@class='points-amount']");
+            if (pointsContainer != null)
+            {
+                usage.LoyaltyPoints = int.Parse(pointsContainer.InnerText);
+            }
+
             var priceContainer = doc.DocumentNode.SelectSingleNode("//div[@class='price']");
             if (priceContainer != null)
             {

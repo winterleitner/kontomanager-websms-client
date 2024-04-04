@@ -6,6 +6,11 @@ namespace KontomanagerClient
     public class AccountUsage
     {
         public string Number { get; set; }
+        
+        /// <summary>
+        /// Some carriers offer loyalty points, such as A1 Mobilpoints
+        /// </summary>
+        public int LoyaltyPoints { get; internal set; }
         public decimal Cost { get; set; }
 
         public DateTime InvoiceDate { get; set; }

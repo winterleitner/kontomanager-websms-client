@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
@@ -19,13 +20,23 @@ namespace KontomanagerClient
         private readonly string _username;
         private readonly string _password;
 
-        private CookieContainer _cookieContainer = new CookieContainer();
+        private readonly CookieContainer _cookieContainer = new CookieContainer();
         private readonly HttpClientHandler _httpClientHandler;
         private readonly HttpClient _httpClient;
 
-        private DateTime _lastConnected = DateTime.MinValue;
+        public DateTime? LastConnected { get; private set; } = null;
+        
+        /// <summary>
+        /// Determines if an exception shall be thrown when a login attempt with invalid credentials is made.
+        /// </summary>
+        public bool ThrowOnInvalidCredentials { get; set; } = false;
 
-        private PhoneNumber _selectedPhoneNumber = null;
+        /// <summary>
+        /// Determines how long the client will assume that a session is still valid before checking it via a new login attempt.
+        /// </summary>
+        public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromMinutes(2);
+
+        private PhoneNumber _selectedPhoneNumber;
 
         public A1BusinessClient(string username, string password)
         {
@@ -39,6 +50,62 @@ namespace KontomanagerClient
                 AllowAutoRedirect = true
             };
             _httpClient = new HttpClient(_httpClientHandler);
+        }
+
+        /// <summary>
+        /// Configures the client to throw an <see cref="InvalidCredentialException"/> when a login attempt with invalid credentials is made.
+        /// </summary>
+        /// <param name="enabled">True if the exception should be thrown.</param>
+        /// <returns></returns>
+        public A1BusinessClient ConfigureThrowOnInvalidCredentials(bool enabled = true)
+        {
+            ThrowOnInvalidCredentials = enabled;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures how long the client will assume that a session is still valid before checking it via a new login attempt.
+        /// </summary>
+        /// <param name="lifetime"></param>
+        /// <returns></returns>
+        public A1BusinessClient ConfigureSessionLifetime(TimeSpan lifetime)
+        {
+            SessionLifetime = lifetime;
+            return this;
+        }
+
+        private async Task<bool> IsLoggedIn()
+        {
+            try
+            {
+                var initResponse = await _httpClient.GetAsync("https://ppp.a1.net/start/index.sp?execution=e1s1");
+                initResponse.EnsureSuccessStatusCode();
+
+                var initResponseText = await initResponse.Content.ReadAsStringAsync();
+                var doc = new HtmlDocument();
+                doc.LoadHtml(initResponseText);
+                var logoutElement = doc.DocumentNode.SelectSingleNode("//a[@title='Logout']");
+                if (logoutElement != null)
+                {
+                    LastConnected = DateTime.Now;
+                    ConnectionEstablished?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        private async Task ReconnectIfRequired()
+        {
+            if (LastConnected is null || DateTime.Now - LastConnected > SessionLifetime)
+            {
+                await CreateConnection();
+            }
         }
 
         public async Task<bool> CreateConnection()
@@ -55,8 +122,9 @@ namespace KontomanagerClient
                 new KeyValuePair<string, string>("u3", "u3")
             });
 
-            _ = await _httpClient.GetAsync("https://ppp.a1.net/start/index.sp?execution=e1s1");
-
+            if (await IsLoggedIn())
+                return true;
+            
             var response = await _httpClient.PostAsync(
                 "https://asmp.a1.net/asmp/ProcessLoginServlet/lvpaaa4/lvpbbgw3?aaacookie=lvpaaa4&eacookie=lvpbbgw3",
                 content);
@@ -67,21 +135,31 @@ namespace KontomanagerClient
             var logoutElement = doc.DocumentNode.SelectSingleNode("//a[@title='Logout']");
             if (logoutElement is null)
             {
+                if (ThrowOnInvalidCredentials)
+                {
+                    var errorElement = doc.DocumentNode.SelectSingleNode("//div[@id='lbun-login-error-text-1']");
+                    if (errorElement != null && errorElement.InnerText.ToLower().Contains("passwor"))
+                    {
+                        throw new InvalidCredentialException(errorElement.InnerText);
+                    }
+                }
+
                 return false;
             }
-            _lastConnected = DateTime.Now;
+            LastConnected = DateTime.Now;
             ConnectionEstablished?.Invoke(this, EventArgs.Empty);
             return true;
         }
 
         public async Task<IEnumerable<PhoneNumber>> GetSelectablePhoneNumbers(bool skipCurrentlySelected = false)
         {
-            var url = "https://ppp.a1.net/start/index.sp?execution=e1s1";
+            await ReconnectIfRequired();
+            const string url = "https://ppp.a1.net/start/index.sp?execution=e1s1";
             var response = await _httpClient.GetAsync(url);
 
-            string responseHTML = await response.Content.ReadAsStringAsync();
+            string responseText = await response.Content.ReadAsStringAsync();
             var doc = new HtmlDocument();
-            doc.LoadHtml(responseHTML);
+            doc.LoadHtml(responseText);
             var contractItems = doc.DocumentNode.SelectNodes("//li[contains(@class, 'contract-product')]");
             if (contractItems is null) return new List<PhoneNumber>();
             var numbers = new List<PhoneNumber>();
@@ -122,12 +200,13 @@ namespace KontomanagerClient
 
         public async Task<AccountUsage> GetAccountUsage(PhoneNumber number)
         {
+            await ReconnectIfRequired();
             var url = $"https://ppp.a1.net/start/mobileTariff.sp?subscriptionId={number.SubscriberId}";
             var response = await _httpClient.GetAsync(url);
 
-            string responseHTML = await response.Content.ReadAsStringAsync();
+            var responseText = await response.Content.ReadAsStringAsync();
             var doc = new HtmlDocument();
-            doc.LoadHtml(responseHTML);
+            doc.LoadHtml(responseText);
             var usage = new AccountUsage
             {
                 Number = number.Number
@@ -150,7 +229,7 @@ namespace KontomanagerClient
                 if (before != null && after != null)
                 {
                     usage.Cost = int.Parse(before.InnerText.Trim().Trim(',')) +
-                                 int.Parse(after.InnerText.Trim().Trim(',')) / 100;
+                                 decimal.Parse(after.InnerText.Trim().Trim(',')) / 100;
                 }
             }
 

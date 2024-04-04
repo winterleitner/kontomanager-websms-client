@@ -4,13 +4,13 @@
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Title>Kontomanager .NET Client</Title>
         <Authors>Felix Winterleitner</Authors>
-        <Description>A client library that wraps the Kontomanager Web Interface used by some Austrian cellular service providers. Enables querying of usage stats in .NET</Description>
-        <Copyright>Copyright (c) Felix Winterleitner 2023</Copyright>
+        <Description>A client library that wraps the Kontomanager Web Interface used by some Austrian cellular service providers as well as the MeinA1 business interface. Enables querying of usage stats in .NET</Description>
+        <Copyright>Copyright (c) Felix Winterleitner 2024</Copyright>
         <RepositoryUrl>https://github.com/winterleitner/kontomanager-websms-client</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <TargetFrameworks>net5.0;net6.0;net7.0;netcoreapp3.1;netstandard2.0;net8.0</TargetFrameworks>
-        <PackageVersion>2.0.6</PackageVersion>
+        <PackageVersion>2.1.0</PackageVersion>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 

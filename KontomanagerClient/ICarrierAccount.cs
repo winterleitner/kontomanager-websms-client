@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Threading.Tasks;
 
 namespace KontomanagerClient
@@ -15,6 +16,7 @@ namespace KontomanagerClient
         /// Creates a connection to the carrier account by logging in.
         /// </summary>
         /// <returns><b>true</b> on login success, else <b>false</b></returns>
+        /// <exception cref="HttpRequestException">When the login request does not return a success status code.</exception>
         Task<bool> CreateConnection();
         
         /// <summary>

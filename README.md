@@ -41,6 +41,18 @@ var usage = await client.GetAccountUsage();
 usage.PrintToConsole();
 ```
 
+### 2.1.0 Additions
+#### A1 Business
+Some extra units, such as USA minutes, are included in the `AdditionalQuotas` dictionary of `PackageUsage`.
+The key is the string used in the MeinA1 interface to describe the unit.
+```c#
+var client = new A1BusinessClient("<login_username/email>", "<login_password>");
+await client.CreateConnection();
+var numbers = await client.GetSelectablePhoneNumbers();
+var usage = await client.GetAccountUsage(numbers.First());
+usage.PrintToConsole();
+```
+
 ### 1.2.0 Additions
 
 ```c#
@@ -74,7 +86,7 @@ The following projects seem to do the same thing as this client in other languag
 
 ### 03.04.2024 2.1.0
 - add `ICarrierAccount` interface to introduce a common interface for all carriers
-- add support for non-kontomanager MeinA1 accounts
+- add support for non-kontomanager MeinA1 accounts via the `A1BusinessClient`
 
 ### 27.03.2023 2.0.6
 - fix bug that parsed the remaining EU data incorrectly

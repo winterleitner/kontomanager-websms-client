@@ -40,6 +40,10 @@ namespace KontomanagerClient
                 Console.WriteLine($"EUMin: {pu.AustriaToEuMinutes.Used} / {pu.AustriaToEuMinutes.Total}");
                 Console.WriteLine($"Data: {pu.Data.Used} / {pu.Data.Total} ({pu.Data.RemainingFree} remaining)");
                 Console.WriteLine($"EUData: {pu.DataEu.Used} / {pu.DataEu.Total} ({pu.DataEu.RemainingFree} remaining)");
+                foreach (var aq in pu.AdditionalQuotas)
+                {
+                    Console.WriteLine($"{aq.Key}: {aq.Value.Used} / {aq.Value.Total} ({aq.Value.RemainingFree} remaining)");
+                }
                 Console.WriteLine("-------------");
                 Console.WriteLine();
             }

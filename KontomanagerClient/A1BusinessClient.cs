@@ -24,7 +24,7 @@ namespace KontomanagerClient
         private readonly HttpClientHandler _httpClientHandler;
         private readonly HttpClient _httpClient;
 
-        public DateTime? LastConnected { get; private set; } = null;
+        public DateTime? LastConnected { get; protected set; } = null;
         
         /// <summary>
         /// Determines if an exception shall be thrown when a login attempt with invalid credentials is made.
@@ -37,6 +37,18 @@ namespace KontomanagerClient
         public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromMinutes(2);
 
         private PhoneNumber _selectedPhoneNumber;
+        
+        /// <summary>
+        /// The customer number assigned to the current login.
+        /// Available after first query of selectable numbers.
+        /// </summary>
+        public string CustomerNumber { get; protected set; }
+        
+        /// <summary>
+        /// The contract number assigned to the current login.
+        /// Available after first query of selectable numbers.
+        /// </summary>
+        public string ContractNumber { get; protected set; }
 
         public A1BusinessClient(string username, string password)
         {
@@ -100,6 +112,26 @@ namespace KontomanagerClient
             }
         }
 
+        private string ParseCustomerNumber(string page)
+        {
+            var r = new Regex(@"Kundennummer: (\d*)");
+            var match = r.Match(page);
+            var result = match.Groups.Count > 1 ? match.Groups[1].Value : null;
+            if (result != null)
+                CustomerNumber = result;
+            return result;
+        }
+
+        private string ParseContractNumber(string page)
+        {
+            var r = new Regex(@"accountId=([^""]*)");
+            var match = r.Match(page);
+            var result = match.Groups.Count > 1 ? match.Groups[1].Value : null;
+            if (result != null)
+                ContractNumber = result;
+            return result;
+        }
+
         private async Task ReconnectIfRequired()
         {
             if (LastConnected is null || DateTime.Now - LastConnected > SessionLifetime)
@@ -146,6 +178,7 @@ namespace KontomanagerClient
 
                 return false;
             }
+
             LastConnected = DateTime.Now;
             ConnectionEstablished?.Invoke(this, EventArgs.Empty);
             return true;
@@ -158,6 +191,9 @@ namespace KontomanagerClient
             var response = await _httpClient.GetAsync(url);
 
             string responseText = await response.Content.ReadAsStringAsync();
+            
+            ParseCustomerNumber(responseText);
+            ParseContractNumber(responseText);
             var doc = new HtmlDocument();
             doc.LoadHtml(responseText);
             var contractItems = doc.DocumentNode.SelectNodes("//li[contains(@class, 'contract-product')]");
@@ -233,6 +269,14 @@ namespace KontomanagerClient
                 }
             }
 
+            // Parse validity period of package
+            DateTime? unitsStart = null, unitsEnd = null;
+            var dateContainer = doc.DocumentNode.SelectSingleNode("//div[@class='price-date']");
+            if (dateContainer != null)
+            {
+                (unitsStart, unitsEnd) = ParseUnitsValidityPeriod(dateContainer.InnerHtml);
+            }
+
             var conversationsContainer = doc.DocumentNode.SelectSingleNode("//div[@id='conversations']");
             var dataContainer = doc.DocumentNode.SelectSingleNode("//div[@id='data']");
             var messagesContainer = doc.DocumentNode.SelectSingleNode("//div[@id='messages']");
@@ -253,6 +297,11 @@ namespace KontomanagerClient
                             {
                                 uq.Name = descriptionNode.InnerText;
                             }
+
+                            if (unitsStart.HasValue)
+                                pu.UnitsValidFrom = unitsStart.Value;
+                            if (unitsEnd.HasValue)
+                                pu.UnitsValidUntil = unitsEnd.Value;
 
                             var circle = package.SelectSingleNode(".//div[contains(@class, 'circle100')]");
                             var usageSpan = circle.SelectSingleNode(".//span");
@@ -314,6 +363,25 @@ namespace KontomanagerClient
             }
 
             return usage;
+        }
+
+        /// <summary>
+        /// From the account usage page, parses the current start and end dates.
+        /// </summary>
+        /// <param name="containerHtml"></param>
+        /// <returns></returns>
+        private (DateTime? unitsStart, DateTime? unitsEnd) ParseUnitsValidityPeriod(string containerHtml)
+        {
+            var range = containerHtml.Split(new [] { "<br>" }, StringSplitOptions.None).Last().Trim();
+            var parts = range.Split(new [] { "bis" }, StringSplitOptions.None);
+            var start = parts[0].Trim();
+            var end = parts[1].Trim();
+            var startDay = int.Parse(start.Split('.').First());
+            var endDay = int.Parse(end.Split('.').First());
+            var today = DateTime.Today;
+            DateTime? unitsStart = today.Day >= startDay ? new DateTime(today.Year, today.Month, startDay) : new DateTime(today.AddMonths(-1).Year, today.AddMonths(-1).Month, startDay);
+            DateTime? unitsEnd = today.Day <= endDay ? new DateTime(today.Year, today.Month, endDay) : new DateTime(today.AddMonths(1).Year, today.AddMonths(1).Month, endDay);
+            return (unitsStart, unitsEnd);
         }
 
         public void Dispose()
